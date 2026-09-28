@@ -19,7 +19,8 @@ On the page you can:
 - pick how far ahead to look (1–4 weeks), the minimum % free, and the shortest
   slot worth booking
 - limit to certain times (e.g. from 18:00) and days (e.g. Sat, Sun)
-- switch individual courts on or off, and sort by date, price or drive time
+- switch individual courts on or off, and sort by date, price or drive time from
+  Pell St or Colindale (each slot shows minutes and miles from both)
 - press **Book ↗** to open that court's calendar on schoolhire.co.uk for that day
 
 Your filters are remembered between visits. Court data is cached for 10
@@ -82,6 +83,7 @@ python schoolhire.py --fixture get.json --start 2026-09-28 --days 7   # offline 
 | `--weekdays`    | all     | e.g. `sat,sun` or `mon,wed,fri`                  |
 | `--only`        | –       | only courts whose name contains this text        |
 | `--sort`        | date    | `date`, `price` or `drive`                       |
+| `--from`        | first   | with `--sort drive`: e.g. `Colindale`            |
 | `--html` / `--json` | –   | also save the results to a file                  |
 | `--delay`       | 1       | seconds between requests                         |
 
@@ -98,7 +100,22 @@ Sat 03 Oct  14:00-18:00  240   100%  Dagenham Park Leisure Centre  28.5  half  3
 ## Adding or removing courts
 
 Edit `courts.json`. The facility id is taken from the number at the end of
-`url`; `price`, `court`, `drive_min` and `notes` are only used for display.
+`url`; `price`, `court`, `drive` and `notes` are only used for display.
+
+`drive` lists each starting point with its drive time and distance:
+
+```json
+"drive": {
+  "Pell St": {"min": 21, "miles": 5.1},
+  "Colindale": {"min": 50, "miles": 20.7}
+}
+```
+
+Add another name there (for every court) and it appears on the page and as a
+"Drive from …" sort option. Pell St times came from Google Maps. Miles come
+from OSRM (OpenStreetMap routing). The Colindale times are OSRM times × 1.29,
+which is how much slower Google's Pell St times were than OSRM's. They're
+estimates, so replace them with real Google Maps times if you check them.
 
 ## Running it on GitHub
 

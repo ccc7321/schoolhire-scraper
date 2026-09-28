@@ -30,6 +30,7 @@ CACHE_MINUTES = 10
 MAX_DAYS = 42
 
 app = Flask(__name__)
+app.json.sort_keys = False  # keep the drive origins in courts.json order
 config = {"courts": HERE / "courts.json", "fixture": None, "delay": 1.0}
 
 # court name -> {"key": (start, days), "at": epoch secs, "slots": [...], "error": str|None}
@@ -91,7 +92,10 @@ def api_slots():
                     if q.get("weekdays") else None)
     except ValueError as e:
         return jsonify({"error": f"bad filter value: {e}"}), 400
-    sort = q.get("sort", "date") if q.get("sort") in sh.SORT_KEYS else "date"
+    # "drive:Colindale" sorts by the drive time from Colindale
+    sort, _, origin = q.get("sort", "date").partition(":")
+    if sort not in sh.SORTS:
+        sort, origin = "date", ""
     hidden = set(filter(None, q.get("hide", "").split("|")))
 
     courts = load_courts()
@@ -103,7 +107,7 @@ def api_slots():
         entry = _cache[court["name"]]
         statuses.append({
             "name": court["name"], "price": court.get("price"),
-            "court": court.get("court", ""), "drive_min": court.get("drive_min"),
+            "court": court.get("court", ""), "drive": court.get("drive", {}),
             "notes": court.get("notes", ""), "url": court["url"].split("?")[0],
             "error": entry["error"], "slots": len(entry["slots"]),
             "fetched_at": dt.datetime.fromtimestamp(entry["at"]).strftime("%H:%M"),
@@ -111,8 +115,10 @@ def api_slots():
         if court["name"] not in hidden:
             windows += sh.court_windows(court, entry["slots"], min_free, min_minutes,
                                         after, before, weekdays)
-    windows.sort(key=sh.SORT_KEYS[sort])
+    windows.sort(key=sh.sort_key(sort, origin or None))
+    origins = list(dict.fromkeys(o for c in courts for o in c.get("drive", {})))
     return jsonify({
+        "origins": origins,
         "start": start.isoformat(),
         "end": (start + dt.timedelta(days=days - 1)).isoformat(),
         "demo": bool(config["fixture"]),

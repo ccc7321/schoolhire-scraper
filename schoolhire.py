@@ -55,7 +55,7 @@ class Window:
     min_free_pct: int
     price: float | None
     court_size: str
-    drive_min: int | None
+    drive: dict[str, dict]  # origin -> {"min": int, "miles": float}
     notes: str
     link: str
 
@@ -197,6 +197,11 @@ def fetch_weeks(session, court_url: str, start: dt.date, end: dt.date,
 
 # --------------------------------------------------------------------------- output
 
+def fmt_drive(drive: dict[str, dict], sep: str = ", ") -> str:
+    """e.g. "Pell St 21m 5.1mi, Colindale 50m 20.7mi"."""
+    return sep.join(f"{origin} {d['min']}m {d['miles']:g}mi" for origin, d in drive.items())
+
+
 def print_table(windows: list[Window]) -> None:
     if not windows:
         print("No slots found that match your filters.")
@@ -206,7 +211,7 @@ def print_table(windows: list[Window]) -> None:
         day = dt.date.fromisoformat(w.date).strftime("%a %d %b")
         rows.append((day, f"{w.start}-{w.end}", str(w.minutes), f"{w.min_free_pct}%",
                      w.court, "" if w.price is None else f"{w.price:g}",
-                     w.court_size, "" if w.drive_min is None else f"{w.drive_min}m",
+                     w.court_size, fmt_drive(w.drive),
                      w.link))
     widths = [max(len(r[i]) for r in rows) for i in range(len(rows[0]) - 1)]
     for n, row in enumerate(rows):
@@ -223,7 +228,7 @@ def write_html(windows: list[Window], path: Path, criteria: str) -> None:
         f"<td>{html.escape(w.court)}</td>"
         f"<td>{'' if w.price is None else f'£{w.price:g}'}</td>"
         f"<td>{html.escape(w.court_size)}</td>"
-        f"<td>{'' if w.drive_min is None else f'{w.drive_min} min'}</td>"
+        f"<td>{'<br>'.join(html.escape(fmt_drive({o: d})) for o, d in w.drive.items())}</td>"
         f"<td>{html.escape(w.notes)}</td>"
         f"<td><a href=\"{html.escape(w.link)}\">book</a></td></tr>"
         for w in windows
@@ -268,6 +273,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--weekdays", help="comma list, e.g. sat,sun or mon,wed,fri")
     p.add_argument("--only", help="only courts whose name contains this text")
     p.add_argument("--sort", choices=["date", "price", "drive"], default="date")
+    p.add_argument("--from", dest="origin",
+                   help="with --sort drive: whose drive time to sort by, e.g. Colindale "
+                        "(default: the first one in courts.json)")
     p.add_argument("--delay", type=float, default=1.0,
                    help="seconds between requests, be gentle (default: 1)")
     p.add_argument("--html", type=Path, help="also write the results to this HTML file")
@@ -308,18 +316,28 @@ def court_windows(court: dict, slots: list[Slot], min_free: int, min_minutes: in
     return [
         Window(court=court["name"], date=date, start=from_minutes(s), end=from_minutes(e),
                minutes=e - s, min_free_pct=pct, price=court.get("price"),
-               court_size=court.get("court", ""), drive_min=court.get("drive_min"),
+               court_size=court.get("court", ""), drive=court.get("drive", {}),
                notes=court.get("notes", ""), link=f"{page}?date={date}")
         for date, s, e, pct in find_windows(slots, min_free, min_minutes,
                                             after, before, weekdays)
     ]
 
 
-SORT_KEYS = {
-    "date": lambda w: (w.date, w.start, w.price or 0, w.drive_min or 0),
-    "price": lambda w: (w.price or 0, w.date, w.start),
-    "drive": lambda w: (w.drive_min or 0, w.date, w.start),
-}
+def drive_min(w: Window, origin: str | None = None) -> int:
+    """Drive time from origin (default: the first one listed), 0 if unknown."""
+    d = w.drive.get(origin) if origin else next(iter(w.drive.values()), None)
+    return d["min"] if d else 0
+
+
+SORTS = ("date", "price", "drive")
+
+
+def sort_key(sort: str, origin: str | None = None):
+    return {
+        "date": lambda w: (w.date, w.start, w.price or 0),
+        "price": lambda w: (w.price or 0, w.date, w.start),
+        "drive": lambda w: (drive_min(w, origin), w.date, w.start),
+    }[sort]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -342,7 +360,7 @@ def main(argv: list[str] | None = None) -> int:
         results += court_windows(court, slots, args.min_free, args.min_minutes,
                                  args.after, args.before, args.weekdays)
 
-    results.sort(key=SORT_KEYS[args.sort])
+    results.sort(key=sort_key(args.sort, args.origin))
 
     criteria = (f"At least {args.min_free}% free for {args.min_minutes}+ min, "
                 f"{args.start:%d %b}–{end:%d %b}")

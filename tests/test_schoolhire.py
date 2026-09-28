@@ -72,5 +72,21 @@ class WindowsTest(unittest.TestCase):
         self.assertEqual(sh.find_windows(self.slots, 50, 60, weekdays={3}), [])
 
 
+class SortTest(unittest.TestCase):
+    def window(self, court, pell, colindale):
+        return sh.Window(court=court, date="2026-10-01", start="18:00", end="19:00",
+                         minutes=60, min_free_pct=100, price=20, court_size="half",
+                         drive={"Pell St": {"min": pell, "miles": 1},
+                                "Colindale": {"min": colindale, "miles": 1}},
+                         notes="", link="")
+
+    def test_drive_sort_by_origin(self):
+        ws = [self.window("a", 10, 50), self.window("b", 30, 20)]
+        order = lambda *args: [w.court for w in sorted(ws, key=sh.sort_key(*args))]
+        self.assertEqual(order("drive"), ["a", "b"])  # first origin listed
+        self.assertEqual(order("drive", "Pell St"), ["a", "b"])
+        self.assertEqual(order("drive", "Colindale"), ["b", "a"])
+
+
 if __name__ == "__main__":
     unittest.main()

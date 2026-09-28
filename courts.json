@@ -5,7 +5,10 @@
     "url": "https://schoolhire.co.uk/london-tower-hamlets/bow-school/basketball-court/4425",
     "price": 26.0,
     "court": "half",
-    "drive_min": 21,
+    "drive": {
+      "Pell St": {"min": 21, "miles": 5.1},
+      "Colindale": {"min": 50, "miles": 20.7}
+    },
     "notes": "consecutive booking discount"
   },
   {
@@ -14,7 +17,10 @@
     "url": "https://schoolhire.co.uk/london-greenwich/stmcomprehensive/basketball-court/28060",
     "price": 35.0,
     "court": "full",
-    "drive_min": 28
+    "drive": {
+      "Pell St": {"min": 28, "miles": 7.0},
+      "Colindale": {"min": 71, "miles": 27.6}
+    }
   },
   {
     "name": "Leyton Sixth Form College",
@@ -22,7 +28,10 @@
     "url": "https://schoolhire.co.uk/london-waltham-forest/leyton-sixth-form-college/basketball-court/11263",
     "price": 20.0,
     "court": "half",
-    "drive_min": 37,
+    "drive": {
+      "Pell St": {"min": 37, "miles": 9.9},
+      "Colindale": {"min": 40, "miles": 15.4}
+    },
     "notes": "consecutive booking discount"
   },
   {
@@ -31,7 +40,10 @@
     "url": "https://schoolhire.co.uk/essex/castlegreen/basketball-court/43191",
     "price": 19.17,
     "court": "half",
-    "drive_min": 30
+    "drive": {
+      "Pell St": {"min": 30, "miles": 10.4},
+      "Colindale": {"min": 50, "miles": 22.4}
+    }
   },
   {
     "name": "Woodford County High School",
@@ -39,7 +51,10 @@
     "url": "https://schoolhire.co.uk/woodford-green/woodford-county-high-school/basketball-court/1895",
     "price": 25.0,
     "court": "half",
-    "drive_min": 45
+    "drive": {
+      "Pell St": {"min": 45, "miles": 12.4},
+      "Colindale": {"min": 35, "miles": 14.5}
+    }
   },
   {
     "name": "Dagenham Park Leisure Centre",
@@ -47,7 +62,10 @@
     "url": "https://schoolhire.co.uk/Dagenham/dagenham-park-leisure-centre/basketball-court/17294",
     "price": 28.5,
     "court": "half",
-    "drive_min": 37
+    "drive": {
+      "Pell St": {"min": 37, "miles": 12.0},
+      "Colindale": {"min": 55, "miles": 24.0}
+    }
   },
   {
     "name": "ATAM Academy",
@@ -55,6 +73,9 @@
     "url": "https://schoolhire.co.uk/romford/atam/basketball-court/42220",
     "price": 30.0,
     "court": "half",
-    "drive_min": 45
+    "drive": {
+      "Pell St": {"min": 45, "miles": 13.5},
+      "Colindale": {"min": 46, "miles": 19.1}
+    }
   }
 ]
