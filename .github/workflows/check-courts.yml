@@ -7,8 +7,6 @@ on:
         description: "Extra arguments, e.g. --after 18:00 --weekdays sat,sun"
         required: false
         default: ""
-  schedule:
-    - cron: "17 6 * * *"  # daily, ~07:17 UK time
 
 jobs:
   check:

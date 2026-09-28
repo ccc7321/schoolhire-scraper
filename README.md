@@ -1,8 +1,38 @@
 # schoolhire-scraper
 
-Checks the basketball courts in `courts.json` on schoolhire.co.uk and lists
-every time window where **at least 50% of the hall is free**, so you don't have
-to click through each court's calendar yourself.
+A small local web app that checks the basketball courts in `courts.json` on
+schoolhire.co.uk and shows every time window where **at least 50% of the hall
+is free**, so you don't have to click through each court's calendar yourself.
+
+## Quick start
+
+```bash
+pip install -r requirements.txt
+python app.py
+```
+
+Your browser opens at http://127.0.0.1:5000. On Windows you can just
+double-click `start.bat` instead.
+
+On the page you can:
+
+- pick how far ahead to look (1–4 weeks), the minimum % free, and the shortest
+  slot worth booking
+- limit to certain times (e.g. from 18:00) and days (e.g. Sat, Sun)
+- switch individual courts on or off, and sort by date, price or drive time
+- press **Book ↗** to open that court's calendar on schoolhire.co.uk for that day
+
+Your filters are remembered between visits. Court data is cached for 10
+minutes, so changing filters is instant. Press **Refresh from site** to fetch
+new data.
+
+Other ways to start it:
+
+```bash
+python app.py --fixture get.json   # demo with the saved sample, no internet needed
+python app.py --host 0.0.0.0       # also reachable from your phone on the same Wi-Fi
+python app.py --port 8080 --no-browser
+```
 
 ## How it works
 
@@ -27,13 +57,10 @@ Back-to-back slots that meet the threshold are joined into one window (e.g.
 Windows shorter than `--min-minutes` are dropped. `get.json` is a saved sample
 response, used by the tests.
 
-## Setup
+## Command-line version
 
-```bash
-pip install -r requirements.txt
-```
-
-## Usage
+`schoolhire.py` does the same checks and prints a table, which is handy for
+scripts:
 
 ```bash
 python schoolhire.py                               # next 14 days, >=50% free, >=60 min
@@ -73,18 +100,28 @@ Sat 03 Oct  14:00-18:00  240   100%  Dagenham Park Leisure Centre  28.5  half  3
 Edit `courts.json`. The facility id is taken from the number at the end of
 `url`; `price`, `court`, `drive_min` and `notes` are only used for display.
 
-## Running it automatically
+## Running it on GitHub
 
-`.github/workflows/check-courts.yml` runs the check every morning on GitHub
-Actions and whenever you press **Run workflow** on the Actions tab (you can pass
-extra options there, e.g. `--after 18:00`). Results appear in the run summary
-and as a downloadable `results.html`.
+`.github/workflows/check-courts.yml` runs the command-line check when you press
+**Run workflow** on the Actions tab (you can pass extra options there, e.g.
+`--after 18:00`). Results appear in the run summary and as a downloadable
+`results.html`. Add a `schedule:` trigger if you want it to run daily.
 
 ## Be polite
 
-The script makes about 2–3 requests per court per run, with a 1 second pause
+Each refresh makes about 2–3 requests per court, with a 1 second pause
 between them. A few runs a day is plenty. Check the site's terms before
 running it more often.
+
+## Files
+
+| File | What it is |
+|------|------------|
+| `app.py` | the web app (Flask) |
+| `static/index.html` | the page |
+| `schoolhire.py` | fetching, parsing and filtering, plus the command-line version |
+| `courts.json` | your courts |
+| `get.json` | saved sample response, used by the tests and demo mode |
 
 ## Tests
 

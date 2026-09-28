@@ -284,50 +284,65 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return args
 
 
+def new_session():
+    import requests  # imported here so --fixture works without it installed
+    session = requests.Session()
+    session.headers["User-Agent"] = USER_AGENT
+    return session
+
+
+def load_court_slots(court: dict, start: dt.date, end: dt.date, delay: float = 1.0,
+                     fixture: Path | None = None, session=None) -> list[Slot]:
+    """All slots for one court between start and end, live or from a saved file."""
+    page = court["url"].split("?")[0]
+    facility_id = facility_id_from_url(page)
+    if fixture:
+        return parse_calendar(json.loads(fixture.read_text(encoding="utf-8")), facility_id)
+    return fetch_weeks(session or new_session(), page, start, end, delay)
+
+
+def court_windows(court: dict, slots: list[Slot], min_free: int, min_minutes: int,
+                  after: str | None = None, before: str | None = None,
+                  weekdays: set[int] | None = None) -> list[Window]:
+    page = court["url"].split("?")[0]
+    return [
+        Window(court=court["name"], date=date, start=from_minutes(s), end=from_minutes(e),
+               minutes=e - s, min_free_pct=pct, price=court.get("price"),
+               court_size=court.get("court", ""), drive_min=court.get("drive_min"),
+               notes=court.get("notes", ""), link=f"{page}?date={date}")
+        for date, s, e, pct in find_windows(slots, min_free, min_minutes,
+                                            after, before, weekdays)
+    ]
+
+
+SORT_KEYS = {
+    "date": lambda w: (w.date, w.start, w.price or 0, w.drive_min or 0),
+    "price": lambda w: (w.price or 0, w.date, w.start),
+    "drive": lambda w: (w.drive_min or 0, w.date, w.start),
+}
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     courts = json.loads(args.courts.read_text(encoding="utf-8"))
     if args.only:
         courts = [c for c in courts if args.only.lower() in c["name"].lower()]
     end = args.start + dt.timedelta(days=args.days - 1)
-
-    session = None
-    if not args.fixture:
-        import requests  # imported here so --fixture works without it installed
-        session = requests.Session()
-        session.headers["User-Agent"] = USER_AGENT
+    session = None if args.fixture else new_session()
 
     results: list[Window] = []
     for court in courts:
-        page = court["url"].split("?")[0]
-        facility_id = facility_id_from_url(page)
-        if args.fixture:
-            data = json.loads(args.fixture.read_text(encoding="utf-8"))
-            if not any(f.get("id") == facility_id for f in data.get("facilities", [])):
-                continue
-            slots = parse_calendar(data, facility_id)
-        else:
+        if not args.fixture:
             print(f"Checking {court['name']}...", file=sys.stderr)
-            try:
-                slots = fetch_weeks(session, page, args.start, end, args.delay)
-            except Exception as e:  # keep going if one court fails
-                print(f"  failed: {e}", file=sys.stderr)
-                continue
+        try:
+            slots = load_court_slots(court, args.start, end, args.delay, args.fixture, session)
+        except Exception as e:  # keep going if one court fails
+            print(f"  {court['name']} failed: {e}", file=sys.stderr)
+            continue
+        results += court_windows(court, slots, args.min_free, args.min_minutes,
+                                 args.after, args.before, args.weekdays)
 
-        for date, s, e, pct in find_windows(slots, args.min_free, args.min_minutes,
-                                            args.after, args.before, args.weekdays):
-            results.append(Window(
-                court=court["name"], date=date, start=from_minutes(s), end=from_minutes(e),
-                minutes=e - s, min_free_pct=pct, price=court.get("price"),
-                court_size=court.get("court", ""), drive_min=court.get("drive_min"),
-                notes=court.get("notes", ""), link=f"{page}?date={date}"))
-
-    sort_keys = {
-        "date": lambda w: (w.date, w.start, w.price or 0, w.drive_min or 0),
-        "price": lambda w: (w.price or 0, w.date, w.start),
-        "drive": lambda w: (w.drive_min or 0, w.date, w.start),
-    }
-    results.sort(key=sort_keys[args.sort])
+    results.sort(key=SORT_KEYS[args.sort])
 
     criteria = (f"At least {args.min_free}% free for {args.min_minutes}+ min, "
                 f"{args.start:%d %b}–{end:%d %b}")
