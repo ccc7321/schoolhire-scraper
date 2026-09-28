@@ -1,0 +1,30 @@
+name: Check courts
+
+on:
+  workflow_dispatch:
+    inputs:
+      args:
+        description: "Extra arguments, e.g. --after 18:00 --weekdays sat,sun"
+        required: false
+        default: ""
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests
+      - name: Find free slots
+        env:
+          EXTRA_ARGS: ${{ github.event.inputs.args }}
+        run: |
+          python schoolhire.py --days 14 --html results.html $EXTRA_ARGS | tee results.txt
+          { echo '```'; cat results.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: court-results
+          path: results.html

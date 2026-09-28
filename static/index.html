@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Court Finder</title>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #fff; --text: #16181d; --muted: #626a78; --line: #e2e5ea;
+  --accent: #d9570f; --accent-soft: #fdeee4; --good: #1a7f4b; --good-soft: #e3f4ea;
+  --on-accent: #fff; --ok: #8a6100; --ok-soft: #fbf1d6; --bad: #b42318; --bad-soft: #fde8e6;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111317; --card: #1a1d23; --text: #e9ebef; --muted: #9aa2b1; --line: #2b3039;
+    --accent: #ff8a3d; --accent-soft: #3a2415; --good: #5fd39a; --good-soft: #15301f;
+    --on-accent: #16181d; --ok: #f1c35b; --ok-soft: #362b10; --bad: #ff8b80; --bad-soft: #3a1714;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0 0 16px; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px; margin-bottom: 16px; }
+.filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted);
+  font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+select, input[type=time] { font: inherit; color: var(--text); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; min-height: 36px; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; }
+.row > span { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase;
+  letter-spacing: .03em; margin-right: 4px; }
+.chip { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--bg);
+  color: var(--muted); border-radius: 999px; padding: 5px 11px; cursor: pointer; }
+.chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+.chip.err { border-color: var(--bad); }
+.chip small { color: var(--muted); }
+.actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+button.primary { font: inherit; font-weight: 600; background: var(--accent); color: var(--on-accent);
+  border: 0; border-radius: 8px; padding: 8px 16px; cursor: pointer; }
+button.primary:disabled { opacity: .6; cursor: default; }
+#status { color: var(--muted); font-size: 13px; }
+.errors { color: var(--bad); background: var(--bad-soft); border-radius: 8px; padding: 8px 12px;
+  font-size: 13px; margin-bottom: 12px; }
+.errors:empty { display: none; }
+.day { margin-bottom: 14px; }
+.day h2 { font-size: 15px; margin: 0 0 6px; display: flex; gap: 8px; align-items: baseline; }
+.day h2 span { color: var(--muted); font-weight: 400; font-size: 13px; }
+.slot { display: grid; grid-template-columns: 112px 64px 1fr auto auto; gap: 10px; align-items: center;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 6px; }
+.time { font-weight: 700; font-variant-numeric: tabular-nums; }
+.dur { color: var(--muted); font-size: 13px; }
+.court { min-width: 0; }
+.court b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.court small { color: var(--muted); }
+.badge { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+.f100 { background: var(--good-soft); color: var(--good); }
+.fpart { background: var(--ok-soft); color: var(--ok); }
+a.book { font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; }
+a.book:hover { text-decoration: underline; }
+.empty { text-align: center; color: var(--muted); padding: 32px 0; }
+.demo { background: var(--ok-soft); color: var(--ok); border-radius: 8px; padding: 6px 10px;
+  font-size: 13px; display: inline-block; margin-bottom: 12px; }
+@media (max-width: 620px) {
+  .slot { grid-template-columns: 1fr auto; }
+  .slot .dur { display: none; }
+  .slot .court { grid-column: 1 / -1; order: 3; }
+  .slot a.book { order: 4; }
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>Court Finder</h1>
+  <p class="sub">Basketball slots with at least the chosen share of the hall free.</p>
+  <div id="demo"></div>
+
+  <section class="panel">
+    <div class="filters">
+      <label>Look ahead
+        <select id="days"><option value="7">1 week</option><option value="14" selected>2 weeks</option>
+          <option value="21">3 weeks</option><option value="28">4 weeks</option></select></label>
+      <label>At least free
+        <select id="min_free"><option value="25">25%</option><option value="50" selected>50%</option>
+          <option value="75">75%</option><option value="100">100% (whole hall)</option></select></label>
+      <label>Shortest slot
+        <select id="min_minutes"><option value="30">30 min</option><option value="60" selected>1 hour</option>
+          <option value="90">1.5 hours</option><option value="120">2 hours</option></select></label>
+      <label>From <input type="time" id="after" step="1800"></label>
+      <label>Until <input type="time" id="before" step="1800"></label>
+      <label>Sort by
+        <select id="sort"><option value="date">Date</option><option value="price">Price</option>
+          <option value="drive">Drive time</option></select></label>
+    </div>
+    <div class="row" id="weekdays"><span>Days</span></div>
+    <div class="row" id="courts"><span>Courts</span></div>
+    <div class="actions">
+      <button class="primary" id="refresh">Refresh from site</button>
+      <span id="status">Loading…</span>
+    </div>
+  </section>
+
+  <div class="errors" id="errors"></div>
+  <div id="results"></div>
+</main>
+
+<script>
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const $ = id => document.getElementById(id);
+const FIELDS = ["days", "min_free", "min_minutes", "after", "before", "sort"];
+let state = { weekdays: [], hide: [] };
+let courtsSeen = false;
+
+function save() {
+  const s = { ...state };
+  FIELDS.forEach(f => s[f] = $(f).value);
+  try { localStorage.setItem("courtFinder", JSON.stringify(s)); } catch (e) {}
+}
+function restore() {
+  try {
+    const s = JSON.parse(localStorage.getItem("courtFinder") || "null");
+    if (!s) return;
+    FIELDS.forEach(f => { if (s[f] !== undefined) $(f).value = s[f]; });
+    state.weekdays = s.weekdays || [];
+    state.hide = s.hide || [];
+  } catch (e) {}
+}
+
+function chip(label, on, onClick) {
+  const b = document.createElement("button");
+  b.className = "chip" + (on ? " on" : "");
+  b.innerHTML = label;
+  b.onclick = onClick;
+  return b;
+}
+function renderWeekdays() {
+  const row = $("weekdays");
+  row.querySelectorAll(".chip").forEach(c => c.remove());
+  DAYS.forEach((d, i) => row.appendChild(chip(d, state.weekdays.includes(i), () => {
+    state.weekdays = state.weekdays.includes(i)
+      ? state.weekdays.filter(x => x !== i) : [...state.weekdays, i];
+    renderWeekdays(); load();
+  })));
+}
+function renderCourts(courts) {
+  const row = $("courts");
+  row.querySelectorAll(".chip").forEach(c => c.remove());
+  courts.forEach(c => {
+    const b = chip(`${esc(c.name)} <small>£${c.price} · ${c.drive_min}m</small>`,
+      !state.hide.includes(c.name), () => {
+        state.hide = state.hide.includes(c.name)
+          ? state.hide.filter(x => x !== c.name) : [...state.hide, c.name];
+        load();
+      });
+    if (c.error) { b.classList.add("err"); b.title = c.error; }
+    row.appendChild(b);
+  });
+}
+
+const esc = s => String(s).replace(/[&<>"']/g, m =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
+const fmtDay = iso => new Date(iso + "T12:00:00").toLocaleDateString("en-GB",
+  { weekday: "long", day: "numeric", month: "short" });
+const fmtDur = m => (m >= 60 ? `${Math.floor(m / 60)}h` : "") + (m % 60 ? `${m % 60}m` : "");
+
+function renderResults(data) {
+  const out = $("results");
+  if (!data.windows.length) {
+    out.innerHTML = '<div class="empty">No slots match these filters. Try a lower % free, shorter slots or more days.</div>';
+    return;
+  }
+  const byDate = new Map();
+  data.windows.forEach(w => (byDate.get(w.date) || byDate.set(w.date, []).get(w.date)).push(w));
+  const groups = $("sort").value === "date"
+    ? [...byDate.entries()] : [["", data.windows]];
+  out.innerHTML = groups.map(([date, ws]) => `
+    <section class="day">
+      ${date ? `<h2>${fmtDay(date)} <span>${ws.length} slot${ws.length > 1 ? "s" : ""}</span></h2>` : ""}
+      ${ws.map(w => `
+        <div class="slot">
+          <div class="time">${date ? "" : `<div class="dur">${fmtDay(w.date)}</div>`}${w.start}–${w.end}</div>
+          <div class="dur">${fmtDur(w.minutes)}</div>
+          <div class="court"><b>${esc(w.court)}</b>
+            <small>£${w.price} ${esc(w.court_size)} court · ${w.drive_min} min drive${w.notes ? " · " + esc(w.notes) : ""}</small></div>
+          <span class="badge ${w.min_free_pct === 100 ? "f100" : "fpart"}">${w.min_free_pct}% free</span>
+          <a class="book" href="${esc(w.link)}" target="_blank" rel="noopener">Book ↗</a>
+        </div>`).join("")}
+    </section>`).join("");
+}
+
+let seq = 0;
+async function load(refresh = false) {
+  save();
+  const my = ++seq;
+  const p = new URLSearchParams();
+  FIELDS.forEach(f => p.set(f, $(f).value));
+  p.set("weekdays", state.weekdays.join(","));
+  p.set("hide", state.hide.join("|"));
+  if (refresh) p.set("refresh", "1");
+  $("refresh").disabled = true;
+  $("status").textContent = refresh || !courtsSeen ? "Fetching court calendars…" : "Filtering…";
+  try {
+    const r = await fetch("/api/slots?" + p);
+    const data = await r.json();
+    if (my !== seq) return;
+    if (!r.ok) throw new Error(data.error || r.statusText);
+    courtsSeen = true;
+    renderCourts(data.courts);
+    renderResults(data);
+    const errs = data.courts.filter(c => c.error);
+    $("errors").innerHTML = errs.map(c => `<div><b>${esc(c.name)}</b>: ${esc(c.error)}</div>`).join("");
+    const at = data.courts.map(c => c.fetched_at).sort()[0];
+    $("status").textContent = `${data.windows.length} slots · ${fmtDay(data.start)} – ${fmtDay(data.end)} · data from ${at}`;
+    $("demo").innerHTML = data.demo ? '<span class="demo">Demo mode: showing the saved sample file, not live data.</span>' : "";
+  } catch (e) {
+    if (my === seq) $("status").textContent = "Error: " + e.message;
+  } finally {
+    if (my === seq) $("refresh").disabled = false;
+  }
+}
+
+restore();
+renderWeekdays();
+FIELDS.forEach(f => $(f).addEventListener("change", () => load()));
+$("refresh").onclick = () => load(true);
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+[
+  {
+    "name": "Bow School",
+    "postcode": "E3 3QW",
+    "url": "https://schoolhire.co.uk/london-tower-hamlets/bow-school/basketball-court/4425",
+    "price": 26.0,
+    "court": "half",
+    "drive_min": 21,
+    "notes": "consecutive booking discount"
+  },
+  {
+    "name": "St Thomas More Comprehensive",
+    "postcode": "SE9 2SU",
+    "url": "https://schoolhire.co.uk/london-greenwich/stmcomprehensive/basketball-court/28060",
+    "price": 35.0,
+    "court": "full",
+    "drive_min": 28
+  },
+  {
+    "name": "Leyton Sixth Form College",
+    "postcode": "E10 6EQ",
+    "url": "https://schoolhire.co.uk/london-waltham-forest/leyton-sixth-form-college/basketball-court/11263",
+    "price": 20.0,
+    "court": "half",
+    "drive_min": 37,
+    "notes": "consecutive booking discount"
+  },
+  {
+    "name": "Castle Green",
+    "postcode": "RM9 4UN",
+    "url": "https://schoolhire.co.uk/essex/castlegreen/basketball-court/43191",
+    "price": 19.17,
+    "court": "half",
+    "drive_min": 30
+  },
+  {
+    "name": "Woodford County High School",
+    "postcode": "IG8 9LA",
+    "url": "https://schoolhire.co.uk/woodford-green/woodford-county-high-school/basketball-court/1895",
+    "price": 25.0,
+    "court": "half",
+    "drive_min": 45
+  },
+  {
+    "name": "Dagenham Park Leisure Centre",
+    "postcode": "RM10 9QH",
+    "url": "https://schoolhire.co.uk/Dagenham/dagenham-park-leisure-centre/basketball-court/17294",
+    "price": 28.5,
+    "court": "half",
+    "drive_min": 37
+  },
+  {
+    "name": "ATAM Academy",
+    "postcode": "RM6 4XX",
+    "url": "https://schoolhire.co.uk/romford/atam/basketball-court/42220",
+    "price": 30.0,
+    "court": "half",
+    "drive_min": 45
+  }
+]
