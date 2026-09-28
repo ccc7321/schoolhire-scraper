@@ -1,0 +1,367 @@
+{
+  "showWaitlistButton": true,
+  "days": [
+    { "date": "2026-09-28", "formattedDate": "Mon, 28 Sep" },
+    { "date": "2026-09-29", "formattedDate": "Tue, 29 Sep" },
+    { "date": "2026-09-30", "formattedDate": "Wed, 30 Sep" },
+    { "date": "2026-10-01", "formattedDate": "Thu,  1 Oct" },
+    { "date": "2026-10-02", "formattedDate": "Fri,  2 Oct" },
+    { "date": "2026-10-03", "formattedDate": "Sat,  3 Oct" },
+    { "date": "2026-10-04", "formattedDate": "Sun,  4 Oct" }
+  ],
+  "facilities": [
+    {
+      "id": 17294,
+      "internalReference": "Sports Hall",
+      "days": [
+        {
+          "date": "2026-09-28",
+          "closed": false,
+          "items": [
+            {
+              "className": "fully_booked",
+              "text": "17:00-22:00 Booked",
+              "busy": true,
+              "orderId": 3375572,
+              "customerUserId": 9515,
+              "facilityId": 17294,
+              "bookingId": 118692345,
+              "subFacilityId": null,
+              "facilityName": "Sports Hall",
+              "bookingOptionId": 22178,
+              "waitlisted": false,
+              "waitlistedItemId": null,
+              "multiItems": false,
+              "upcoming": true,
+              "eventDate": "28 Sep 2026",
+              "eventDateRaw": "2026-09-28",
+              "startTime": "17:00",
+              "endTime": "22:00"
+            }
+          ]
+        },
+        {
+          "date": "2026-09-29",
+          "closed": false,
+          "items": [
+            {
+              "className": "available",
+              "text": "17:00-18:00 Available",
+              "busy": false
+            },
+            {
+              "className": "partially_booked",
+              "text": "18:00-19:00 50% busy",
+              "busy": true,
+              "orderId": 3349942,
+              "customerUserId": 72987,
+              "facilityId": 17294,
+              "bookingId": 119829205,
+              "subFacilityId": null,
+              "facilityName": "Sports Hall",
+              "bookingOptionId": 23098,
+              "waitlisted": false,
+              "waitlistedItemId": null,
+              "multiItems": false,
+              "upcoming": true,
+              "eventDate": "29 Sep 2026",
+              "eventDateRaw": "2026-09-29",
+              "startTime": "18:00",
+              "endTime": "19:00"
+            },
+            {
+              "className": "partially_booked",
+              "text": "19:00-20:30 75% busy",
+              "busy": true,
+              "orderId": 3349942,
+              "customerUserId": 72987,
+              "facilityId": 17294,
+              "bookingId": 119829205,
+              "subFacilityId": null,
+              "facilityName": "Sports Hall",
+              "bookingOptionId": 23098,
+              "waitlisted": false,
+              "waitlistedItemId": null,
+              "multiItems": false,
+              "upcoming": true,
+              "eventDate": "29 Sep 2026",
+              "eventDateRaw": "2026-09-29",
+              "startTime": "19:00",
+              "endTime": "20:30"
+            },
+            {
+              "className": "fully_booked",
+              "text": "20:30-22:00 Booked",
+              "busy": true,
+              "orderId": 3418247,
+              "customerUserId": 290560,
+              "facilityId": 17294,
+              "bookingId": 120377889,
+              "subFacilityId": null,
+              "facilityName": "Sports Hall",
+              "bookingOptionId": 23099,
+              "waitlisted": false,
+              "waitlistedItemId": null,
+              "multiItems": false,
+              "upcoming": true,
+              "eventDate": "29 Sep 2026",
+              "eventDateRaw": "2026-09-29",
+              "startTime": "20:30",
+              "endTime": "22:00"
+            }
+          ]
+        },
+        {
+          "date": "2026-09-30",
+          "closed": false,
+          "items": [
+            {
+              "className": "fully_booked",
+              "text": "17:00-22:00 Booked",
+              "busy": true,
+              "orderId": 3375572,
+              "customerUserId": 9515,
+              "facilityId": 17294,
+              "bookingId": 118692255,
+              "subFacilityId": null,
+              "facilityName": "Sports Hall",
+              "bookingOptionId": 22178,
+              "waitlisted": false,
+              "waitlistedItemId": null,
+              "multiItems": false,
+              "upcoming": true,
+              "eventDate": "30 Sep 2026",
+              "eventDateRaw": "2026-09-30",
+              "startTime": "17:00",
+              "endTime": "22:00"
+            }
+          ]
+        },
+        {
+          "date": "2026-10-01",
+          "closed": false,
+          "items": [
+            {
+              "className": "partially_booked",
+              "text": "17:00-17:30 50% busy",
+              "busy": true,
+              "orderId": 3404854,
+              "customerUserId": 454049,
+              "facilityId": 17294,
+              "bookingId": 120093272,
+              "subFacilityId": null,
+              "facilityName": "Sports Hall",
+              "bookingOptionId": 23098,
+              "waitlisted": false,
+              "waitlistedItemId": null,
+              "multiItems": false,
+              "upcoming": true,
+              "eventDate": "01 Oct 2026",
+              "eventDateRaw": "2026-10-01",
+              "startTime": "17:00",
+              "endTime": "17:30"
+            },
+            {
+              "className": "fully_booked",
+              "text": "17:30-21:00 Booked",
+              "busy": true,
+              "orderId": 3404854,
+              "customerUserId": 454049,
+              "facilityId": 17294,
+              "bookingId": 120093272,
+              "subFacilityId": null,
+              "facilityName": "Sports Hall",
+              "bookingOptionId": 23098,
+              "waitlisted": false,
+              "waitlistedItemId": null,
+              "multiItems": false,
+              "upcoming": true,
+              "eventDate": "01 Oct 2026",
+              "eventDateRaw": "2026-10-01",
+              "startTime": "17:30",
+              "endTime": "21:00"
+            },
+            {
+              "className": "partially_booked",
+              "text": "21:00-22:00 75% busy",
+              "busy": true,
+              "orderId": 3313584,
+              "customerUserId": 355629,
+              "facilityId": 17294,
+              "bookingId": 115180552,
+              "subFacilityId": null,
+              "facilityName": "Sports Hall",
+              "bookingOptionId": 23099,
+              "waitlisted": false,
+              "waitlistedItemId": null,
+              "multiItems": false,
+              "upcoming": true,
+              "eventDate": "01 Oct 2026",
+              "eventDateRaw": "2026-10-01",
+              "startTime": "21:00",
+              "endTime": "22:00"
+            }
+          ]
+        },
+        {
+          "date": "2026-10-02",
+          "closed": false,
+          "items": [
+            {
+              "className": "fully_booked",
+              "text": "17:00-22:00 Booked",
+              "busy": true,
+              "orderId": 3375572,
+              "customerUserId": 9515,
+              "facilityId": 17294,
+              "bookingId": 118692329,
+              "subFacilityId": null,
+              "facilityName": "Sports Hall",
+              "bookingOptionId": 22178,
+              "waitlisted": false,
+              "waitlistedItemId": null,
+              "multiItems": false,
+              "upcoming": true,
+              "eventDate": "02 Oct 2026",
+              "eventDateRaw": "2026-10-02",
+              "startTime": "17:00",
+              "endTime": "22:00"
+            }
+          ]
+        },
+        {
+          "date": "2026-10-03",
+          "closed": false,
+          "items": [
+            {
+              "className": "available",
+              "text": "09:00-10:30 Available",
+              "busy": false
+            },
+            {
+              "className": "partially_booked",
+              "text": "10:30-12:00 50% busy",
+              "busy": true,
+              "orderId": 3404820,
+              "customerUserId": 454049,
+              "facilityId": 17294,
+              "bookingId": 119773790,
+              "subFacilityId": null,
+              "facilityName": "Sports Hall",
+              "bookingOptionId": 23098,
+              "waitlisted": false,
+              "waitlistedItemId": null,
+              "multiItems": false,
+              "upcoming": true,
+              "eventDate": "03 Oct 2026",
+              "eventDateRaw": "2026-10-03",
+              "startTime": "10:30",
+              "endTime": "12:00"
+            },
+            {
+              "className": "fully_booked",
+              "text": "12:00-14:00 Booked",
+              "busy": true,
+              "orderId": 3396076,
+              "customerUserId": 339304,
+              "facilityId": 17294,
+              "bookingId": 119346145,
+              "subFacilityId": null,
+              "facilityName": "Sports Hall",
+              "bookingOptionId": 22178,
+              "waitlisted": false,
+              "waitlistedItemId": null,
+              "multiItems": false,
+              "upcoming": true,
+              "eventDate": "03 Oct 2026",
+              "eventDateRaw": "2026-10-03",
+              "startTime": "12:00",
+              "endTime": "14:00"
+            },
+            {
+              "className": "available",
+              "text": "14:00-18:00 Available",
+              "busy": false
+            }
+          ]
+        },
+        {
+          "date": "2026-10-04",
+          "closed": false,
+          "items": [
+            {
+              "className": "available",
+              "text": "09:00-10:00 Available",
+              "busy": false
+            },
+            {
+              "className": "partially_booked",
+              "text": "10:00-11:00 50% busy",
+              "busy": true,
+              "orderId": 3296737,
+              "customerUserId": 72989,
+              "facilityId": 17294,
+              "bookingId": 116960426,
+              "subFacilityId": null,
+              "facilityName": "Sports Hall",
+              "bookingOptionId": 23098,
+              "waitlisted": false,
+              "waitlistedItemId": null,
+              "multiItems": false,
+              "upcoming": true,
+              "eventDate": "04 Oct 2026",
+              "eventDateRaw": "2026-10-04",
+              "startTime": "10:00",
+              "endTime": "11:00"
+            },
+            {
+              "className": "partially_booked",
+              "text": "11:00-13:00 75% busy",
+              "busy": true,
+              "orderId": 3296737,
+              "customerUserId": 72989,
+              "facilityId": 17294,
+              "bookingId": 116960426,
+              "subFacilityId": null,
+              "facilityName": "Sports Hall",
+              "bookingOptionId": 23098,
+              "waitlisted": false,
+              "waitlistedItemId": null,
+              "multiItems": false,
+              "upcoming": true,
+              "eventDate": "04 Oct 2026",
+              "eventDateRaw": "2026-10-04",
+              "startTime": "11:00",
+              "endTime": "13:00"
+            },
+            {
+              "className": "partially_booked",
+              "text": "13:00-16:30 50% busy",
+              "busy": true,
+              "orderId": 3296737,
+              "customerUserId": 72989,
+              "facilityId": 17294,
+              "bookingId": 116960426,
+              "subFacilityId": null,
+              "facilityName": "Sports Hall",
+              "bookingOptionId": 23098,
+              "waitlisted": false,
+              "waitlistedItemId": null,
+              "multiItems": false,
+              "upcoming": true,
+              "eventDate": "04 Oct 2026",
+              "eventDateRaw": "2026-10-04",
+              "startTime": "13:00",
+              "endTime": "16:30"
+            },
+            {
+              "className": "available",
+              "text": "16:30-18:00 Available",
+              "busy": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
