@@ -6,7 +6,7 @@
 
 The court calendars are fetched in parallel and cached for a few minutes, so
 changing the filters on the page is instant and doesn't hit schoolhire.co.uk
-again. Press "Refresh" on the page to fetch fresh data.
+or Brunel again. Press "Refresh" on the page to fetch fresh data.
 """
 
 from __future__ import annotations
@@ -98,7 +98,10 @@ def api_slots():
         sort, origin = "date", ""
     hidden = set(filter(None, q.get("hide", "").split("|")))
 
-    courts = load_courts()
+    all_courts = load_courts()
+    groups = list(dict.fromkeys(c["group"] for c in all_courts if c.get("group")))
+    # only the chosen team's courts are fetched and shown
+    courts = [c for c in all_courts if sh.in_group(c, q.get("group"))]
     start = default_start()
     get_slots(courts, start, days, refresh=q.get("refresh") == "1")
 
@@ -106,7 +109,8 @@ def api_slots():
     for court in courts:
         entry = _cache[court["name"]]
         statuses.append({
-            "name": court["name"], "price": court.get("price"),
+            "name": court["name"], "group": court.get("group", ""),
+            "price": court.get("price"),
             "court": court.get("court", ""), "drive": court.get("drive", {}),
             "notes": court.get("notes", ""), "url": court["url"].split("?")[0],
             "error": entry["error"], "slots": len(entry["slots"]),
@@ -119,6 +123,7 @@ def api_slots():
     origins = list(dict.fromkeys(o for c in courts for o in c.get("drive", {})))
     return jsonify({
         "origins": origins,
+        "groups": groups,
         "start": start.isoformat(),
         "end": (start + dt.timedelta(days=days - 1)).isoformat(),
         "demo": bool(config["fixture"]),

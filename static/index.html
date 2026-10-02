@@ -97,6 +97,7 @@ a.book:hover { text-decoration: underline; }
         <select id="sort"><option value="date">Date</option><option value="price">Price</option>
           <option value="drive">Drive time</option></select></label>
     </div>
+    <div class="row" id="groups"><span>Team</span></div>
     <div class="row" id="weekdays"><span>Days</span></div>
     <div class="row" id="courts"><span>Courts</span></div>
     <div class="actions">
@@ -113,7 +114,7 @@ a.book:hover { text-decoration: underline; }
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const $ = id => document.getElementById(id);
 const FIELDS = ["days", "min_free", "min_minutes", "after", "before", "sort"];
-let state = { weekdays: [], hide: [] };
+let state = { weekdays: [], hide: [], group: "" };
 let courtsSeen = false;
 
 function save() {
@@ -130,6 +131,7 @@ function restore() {
     savedSort = s.sort;
     state.weekdays = s.weekdays || [];
     state.hide = s.hide || [];
+    state.group = s.group || "";
   } catch (e) {}
 }
 
@@ -149,6 +151,18 @@ function renderWeekdays() {
     renderWeekdays(); load();
   })));
 }
+// One chip per "group" in courts.json; picking one only checks that team's courts.
+function renderGroups(groups) {
+  const row = $("groups");
+  row.querySelectorAll(".chip").forEach(c => c.remove());
+  row.style.display = groups.length ? "" : "none";
+  [["", "All"], ...groups.map(g => [g, g])].forEach(([value, label]) =>
+    row.appendChild(chip(esc(label), state.group === value, () => {
+      state.group = value;
+      courtsSeen = false;
+      load();
+    })));
+}
 // One "Drive from X" sort option per starting point in courts.json.
 function renderSortOptions(origins) {
   const sel = $("sort");
@@ -161,6 +175,7 @@ function renderSortOptions(origins) {
   if (!sel.value) sel.value = "date";
   savedSort = null;
 }
+const fmtPrice = p => p == null ? "price on site" : `£${p}`;
 const fmtDrive = drive => Object.entries(drive || {})
   .map(([o, d]) => `${esc(o)} ${d.min} min (${d.miles} mi)`).join(" · ");
 
@@ -169,7 +184,7 @@ function renderCourts(courts) {
   row.querySelectorAll(".chip").forEach(c => c.remove());
   courts.forEach(c => {
     const mins = Object.values(c.drive || {}).map(d => `${d.min}m`).join(" / ");
-    const b = chip(`${esc(c.name)} <small>£${c.price} · ${mins}</small>`,
+    const b = chip(`${esc(c.name)} <small>${fmtPrice(c.price)} · ${mins}</small>`,
       !state.hide.includes(c.name), () => {
         state.hide = state.hide.includes(c.name)
           ? state.hide.filter(x => x !== c.name) : [...state.hide, c.name];
@@ -206,7 +221,7 @@ function renderResults(data) {
           <div class="time">${date ? "" : `<div class="dur">${fmtDay(w.date)}</div>`}${w.start}–${w.end}</div>
           <div class="dur">${fmtDur(w.minutes)}</div>
           <div class="court"><b>${esc(w.court)}</b>
-            <small>£${w.price} ${esc(w.court_size)} court${w.notes ? " · " + esc(w.notes) : ""}</small>
+            <small>${fmtPrice(w.price)} · ${esc(w.court_size)} court${w.notes ? " · " + esc(w.notes) : ""}</small>
             <small class="drive">🚗 ${fmtDrive(w.drive)}</small></div>
           <span class="badge ${w.min_free_pct === 100 ? "f100" : "fpart"}">${w.min_free_pct}% free</span>
           <a class="book" href="${esc(w.link)}" target="_blank" rel="noopener">Book ↗</a>
@@ -222,6 +237,7 @@ async function load(refresh = false) {
   FIELDS.forEach(f => p.set(f, $(f).value));
   p.set("weekdays", state.weekdays.join(","));
   p.set("hide", state.hide.join("|"));
+  p.set("group", state.group);
   if (refresh) p.set("refresh", "1");
   $("refresh").disabled = true;
   $("status").textContent = refresh || !courtsSeen ? "Fetching court calendars…" : "Filtering…";
@@ -234,6 +250,9 @@ async function load(refresh = false) {
     renderSortOptions(data.origins);
     // a saved "Drive from X" choice only exists once the origins are known
     if ($("sort").value !== p.get("sort")) return load();
+    // a saved team that is no longer in courts.json falls back to All
+    if (state.group && !data.groups.includes(state.group)) { state.group = ""; return load(); }
+    renderGroups(data.groups);
     renderCourts(data.courts);
     renderResults(data);
     const errs = data.courts.filter(c => c.error);

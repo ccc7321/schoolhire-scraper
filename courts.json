@@ -1,6 +1,7 @@
 [
   {
     "name": "Bow School",
+    "group": "KongBaller",
     "postcode": "E3 3QW",
     "url": "https://schoolhire.co.uk/london-tower-hamlets/bow-school/basketball-court/4425",
     "price": 26.0,
@@ -13,6 +14,7 @@
   },
   {
     "name": "St Thomas More Comprehensive",
+    "group": "KongBaller",
     "postcode": "SE9 2SU",
     "url": "https://schoolhire.co.uk/london-greenwich/stmcomprehensive/basketball-court/28060",
     "price": 35.0,
@@ -24,6 +26,7 @@
   },
   {
     "name": "Leyton Sixth Form College",
+    "group": "KongBaller",
     "postcode": "E10 6EQ",
     "url": "https://schoolhire.co.uk/london-waltham-forest/leyton-sixth-form-college/basketball-court/11263",
     "price": 20.0,
@@ -36,6 +39,7 @@
   },
   {
     "name": "Castle Green",
+    "group": "KongBaller",
     "postcode": "RM9 4UN",
     "url": "https://schoolhire.co.uk/essex/castlegreen/basketball-court/43191",
     "price": 19.17,
@@ -47,6 +51,7 @@
   },
   {
     "name": "Woodford County High School",
+    "group": "KongBaller",
     "postcode": "IG8 9LA",
     "url": "https://schoolhire.co.uk/woodford-green/woodford-county-high-school/basketball-court/1895",
     "price": 25.0,
@@ -58,6 +63,7 @@
   },
   {
     "name": "Dagenham Park Leisure Centre",
+    "group": "KongBaller",
     "postcode": "RM10 9QH",
     "url": "https://schoolhire.co.uk/Dagenham/dagenham-park-leisure-centre/basketball-court/17294",
     "price": 28.5,
@@ -69,6 +75,7 @@
   },
   {
     "name": "ATAM Academy",
+    "group": "KongBaller",
     "postcode": "RM6 4XX",
     "url": "https://schoolhire.co.uk/romford/atam/basketball-court/42220",
     "price": 30.0,
@@ -77,5 +84,100 @@
       "Pell St": {"min": 45, "miles": 13.5},
       "Colindale": {"min": 46, "miles": 19.1}
     }
+  },
+  {
+    "name": "Brunel Sports Hall",
+    "group": "Watford",
+    "postcode": "UB8 3PH",
+    "source": "brunel",
+    "activity_id": "SHBASKHALF12",
+    "url": "https://brunelsport.gladstonego.cloud/book",
+    "price": 20.0,
+    "court": "half",
+    "drive": {
+      "Pell St": {"min": 72, "miles": 22.2},
+      "Colindale": {"min": 42, "miles": 16.6}
+    },
+    "notes": "Sports Hall courts 1&2 · guest fees may apply"
+  },
+  {
+    "name": "Brunel Netball Hall",
+    "group": "Watford",
+    "postcode": "UB8 3PH",
+    "source": "brunel",
+    "activity_id": "NHBASKETBALL",
+    "url": "https://brunelsport.gladstonego.cloud/book",
+    "price": 40.0,
+    "court": "full",
+    "drive": {
+      "Pell St": {"min": 72, "miles": 22.2},
+      "Colindale": {"min": 42, "miles": 16.6}
+    },
+    "notes": "Netball Hall · guest fees may apply"
+  },
+  {
+    "name": "Kingsbury High School (Upper)",
+    "group": "Watford",
+    "postcode": "NW9 9JR",
+    "url": "https://schoolhire.co.uk/london-brent/kingsbury-high-school-upper/basketball-court/4532",
+    "price": 31.5,
+    "court": "half",
+    "drive": {
+      "Pell St": {"min": 69, "miles": 14.7},
+      "Colindale": {"min": 6, "miles": 1.4}
+    },
+    "notes": "full hall £57.75"
+  },
+  {
+    "name": "Heartlands High School",
+    "group": "Watford",
+    "postcode": "N22 7ST",
+    "url": "https://schoolhire.co.uk/london-haringey/heartlands/basketball-court/4389",
+    "price": 25.0,
+    "court": "half",
+    "drive": {
+      "Pell St": {"min": 56, "miles": 10.7},
+      "Colindale": {"min": 20, "miles": 8.0}
+    },
+    "notes": "full hall £50"
+  },
+  {
+    "name": "Alec Reed Academy",
+    "group": "Watford",
+    "postcode": "UB5 5LQ",
+    "url": "https://schoolhire.co.uk/middlesex/alecreedcsc/basketball-court/19803",
+    "price": 30.0,
+    "court": "half",
+    "drive": {
+      "Pell St": {"min": 68, "miles": 17.6},
+      "Colindale": {"min": 28, "miles": 10.6}
+    },
+    "notes": "full hall £52"
+  },
+  {
+    "name": "Rickmansworth School",
+    "group": "Watford",
+    "postcode": "WD3 3AQ",
+    "url": "https://schoolhire.co.uk/rickmansworth/rickmansworth-school/basketball-court/14655",
+    "price": 32.0,
+    "court": "half",
+    "drive": {
+      "Pell St": {"min": 90, "miles": 27.8},
+      "Colindale": {"min": 34, "miles": 14.8}
+    },
+    "notes": "full hall £60"
+  },
+  {
+    "name": "Guru Nanak Sikh Academy",
+    "group": "Watford",
+    "postcode": "UB4 0LT",
+    "url": "https://schoolhire.co.uk/london-hillingdon/gnsa/basketball-court/31398",
+    "price": 30.0,
+    "court": "half",
+    "drive": {
+      "Pell St": {"min": 72, "miles": 20.6},
+      "Colindale": {"min": 36, "miles": 13.2}
+    },
+    "notes": "full hall £50 · consecutive booking discount"
   }
 ]

@@ -272,6 +272,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--before", help="only times until HH:MM, e.g. 22:00")
     p.add_argument("--weekdays", help="comma list, e.g. sat,sun or mon,wed,fri")
     p.add_argument("--only", help="only courts whose name contains this text")
+    p.add_argument("--group", help="only courts in this group (team), e.g. KongBaller")
     p.add_argument("--sort", choices=["date", "price", "drive"], default="date")
     p.add_argument("--from", dest="origin",
                    help="with --sort drive: whose drive time to sort by, e.g. Colindale "
@@ -302,6 +303,9 @@ def new_session():
 def load_court_slots(court: dict, start: dt.date, end: dt.date, delay: float = 1.0,
                      fixture: Path | None = None, session=None) -> list[Slot]:
     """All slots for one court between start and end, live or from a saved file."""
+    if court.get("source") == "brunel":
+        import brunel  # imported here because brunel imports this module
+        return brunel.load_slots(court, start, end, fixture, session)
     page = court["url"].split("?")[0]
     facility_id = facility_id_from_url(page)
     if fixture:
@@ -323,6 +327,11 @@ def court_windows(court: dict, slots: list[Slot], min_free: int, min_minutes: in
     ]
 
 
+def in_group(court: dict, group: str | None) -> bool:
+    """True if the court belongs to the group (any court when no group is given)."""
+    return not group or court.get("group", "").lower() == group.lower()
+
+
 def drive_min(w: Window, origin: str | None = None) -> int:
     """Drive time from origin (default: the first one listed), 0 if unknown."""
     d = w.drive.get(origin) if origin else next(iter(w.drive.values()), None)
@@ -335,7 +344,7 @@ SORTS = ("date", "price", "drive")
 def sort_key(sort: str, origin: str | None = None):
     return {
         "date": lambda w: (w.date, w.start, w.price or 0),
-        "price": lambda w: (w.price or 0, w.date, w.start),
+        "price": lambda w: (w.price is None, w.price or 0, w.date, w.start),
         "drive": lambda w: (drive_min(w, origin), w.date, w.start),
     }[sort]
 
@@ -343,6 +352,7 @@ def sort_key(sort: str, origin: str | None = None):
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     courts = json.loads(args.courts.read_text(encoding="utf-8"))
+    courts = [c for c in courts if in_group(c, args.group)]
     if args.only:
         courts = [c for c in courts if args.only.lower() in c["name"].lower()]
     end = args.start + dt.timedelta(days=args.days - 1)
