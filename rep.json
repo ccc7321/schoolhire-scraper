@@ -1,0 +1,16 @@
+curl --url 'https://schoolhire.co.uk/all-facilities' \
+  -H 'accept: application/json, text/plain, */*' \
+  -H 'accept-language: en-US,en;q=0.9,zh-TW;q=0.8,zh;q=0.7' \
+  -H 'content-type: multipart/form-data; boundary=----WebKitFormBoundaryDJjfolkjL1pSToy2' \
+  -b '__stripe_mid=f14c640e-3fb6-4972-a5b0-40679260f661a24156; cookieyes-consent=consentid:eGFyczl4NlJGTlhvZ1RJMFdmNzN3ZzFuMzhVSUdpR2s,consent:yes,action:yes,necessary:yes,functional:yes,analytics:yes,performance:yes,advertisement:yes,other:yes; _hjSessionUser_349522=eyJpZCI6Ijg0MTQ1MmQ1LWI1MTYtNWU5Ni1iN2FjLTFmZGQ4NjYwZmEwZCIsImNyZWF0ZWQiOjE3ODAzNTExMjk0NDAsImV4aXN0aW5nIjp0cnVlfQ==; _app_session=c09e41fd27dadddef1d154246a8b18d3; _gid=GA1.3.1506556229.1792976033; _dc_gtm_UA-41992121-43=1; _hjSession_349522=eyJpZCI6ImY2ZTE1ZTViLTNkODYtNDUyMC1iNTA3LWNkZjU0Zjg3N2ZmNCIsImMiOjE3OTMwNDI1MDk0MDAsInMiOjAsInIiOjAsInNiIjowLCJzciI6MCwic2UiOjAsImZzIjowLCJzcCI6MX0=; __stripe_sid=4e40196f-6990-43c7-a477-0a3402604cb5b69557; _gali=submit-main-search; _ga_71CX6ME0YX=GS2.3.s1793042509$o4$g1$t1793042521$j48$l0$h0; XSRF-TOKEN=QbbVZBfYcg_CjIfKFqKxA4N65IpOFjQdAceDFd_CnGcK5IEAVAZRKYtwwrMr1z2_RsQrdXTQV6SsrKy4O5VNxw; _ga_624LEPBQ8J=GS2.1.s1793042509$o4$g1$t1793042527$j42$l0$h0; _ga=GA1.3.412892262.1780351105' \
+  -H 'origin: https://schoolhire.co.uk' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://schoolhire.co.uk/all-facilities?categories=Basketball%20Courts&area=London%20NW9&date=31/10/2026' \
+  -H 'sec-ch-ua: "Not=A?Brand";v="99", "Google Chrome";v="151", "Chromium";v="151"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-origin' \
+  -H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36' \
+  --data-raw $'------WebKitFormBoundaryDJjfolkjL1pSToy2\r\nContent-Disposition: form-data; name="lat"\r\n\r\n51.583103799999996\r\n------WebKitFormBoundaryDJjfolkjL1pSToy2\r\nContent-Disposition: form-data; name="lng"\r\n\r\n-0.2534766\r\n------WebKitFormBoundaryDJjfolkjL1pSToy2\r\nContent-Disposition: form-data; name="categories"\r\n\r\nBasketball Courts\r\n------WebKitFormBoundaryDJjfolkjL1pSToy2\r\nContent-Disposition: form-data; name="area"\r\n\r\nLondon NW9\r\n------WebKitFormBoundaryDJjfolkjL1pSToy2\r\nContent-Disposition: form-data; name="date"\r\n\r\n31/10/2026\r\n------WebKitFormBoundaryDJjfolkjL1pSToy2\r\nContent-Disposition: form-data; name="multi_venue_id"\r\n\r\n\r\n------WebKitFormBoundaryDJjfolkjL1pSToy2\r\nContent-Disposition: form-data; name="distance"\r\n\r\n10\r\n------WebKitFormBoundaryDJjfolkjL1pSToy2\r\nContent-Disposition: form-data; name="min_price"\r\n\r\n0\r\n------WebKitFormBoundaryDJjfolkjL1pSToy2\r\nContent-Disposition: form-data; name="max_price"\r\n\r\n10000\r\n------WebKitFormBoundaryDJjfolkjL1pSToy2\r\nContent-Disposition: form-data; name="update_center"\r\n\r\ntrue\r\n------WebKitFormBoundaryDJjfolkjL1pSToy2--\r\n'
