@@ -91,6 +91,19 @@ class ApiTest(unittest.TestCase):
         groups = self.client.delete(f"/api/groups/east-london/courts?url={url}").get_json()
         self.assertEqual(len(groups[0]["courts"]), 7)
 
+    def test_drive_guesses(self):
+        groups = self.client.put("/api/groups/east-london", json={"from": "Pell St"}).get_json()
+        self.assertEqual((groups[0]["name"], groups[0]["from"]), ("East London", "Pell St"))
+        self.client.patch("/api/groups/east-london/courts",
+                          json={"url": DAGENHAM, "drive_min": "37"})
+        self.assertEqual(self.client.patch("/api/groups/east-london/courts",
+                                           json={"url": DAGENHAM, "drive_min": "far"}).status_code, 400)
+        data = self.client.get("/api/slots?sort=drive").get_json()
+        dagenham = next(c for c in data["courts"] if c["url"] == DAGENHAM)
+        self.assertEqual(dagenham["drive"], [{"from": "Pell St", "min": 37}])
+        self.assertEqual(data["windows"][0]["drive"], [{"from": "Pell St", "min": 37}])
+        self.assertEqual(len(data["windows"]), 5)
+
     def test_site_down_when_adding(self):
         with mock.patch.object(store, "fetch_page", side_effect=OSError("timed out")):
             r = self.client.post("/api/groups/east-london/courts", json={

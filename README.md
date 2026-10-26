@@ -27,7 +27,7 @@ On the page you can:
 - pick how far ahead to look (1–4 weeks), the minimum % free, and the shortest
   slot worth booking
 - limit to certain times (e.g. from 18:00) and days (e.g. Sat, Sun)
-- switch individual courts on or off, and sort by date or price
+- switch individual courts on or off, and sort by date, price or drive time
 - press **Book ↗** to open that court's calendar on schoolhire.co.uk for that day
 
 Your filters are remembered between visits. Court data is cached for 10
@@ -55,6 +55,12 @@ Open **Manage groups & courts** on the page:
   price when there is one and notes the full-hall price.
 - Check the **£ / hour** and **Size** of each court and change them if needed.
   Changes save straight away. **Remove** takes a court out of the group.
+- **Driving from** is where the group usually sets off from (e.g. `Home`,
+  `Pell St` or a postcode). Put your guess of the drive from there to each court
+  in its **Drive (min)** box, or leave it blank if you don't know. Each slot
+  then shows e.g. "🚗 ~25 min from Pell St", and **Sort by → Drive time** puts
+  the closest courts first (courts with no guess go last). When you look at
+  **All**, a court that's in several groups shows the guess from each.
 
 The same court can be in more than one group; it's only checked once.
 
@@ -98,6 +104,7 @@ python schoolhire.py --days 21 --after 18:00       # evenings, next 3 weeks
 python schoolhire.py --weekdays sat,sun --min-minutes 90
 python schoolhire.py --min-free 100                # whole hall free only
 python schoolhire.py --sort price --html results.html
+python schoolhire.py --sort drive                  # closest first, using your guesses
 python schoolhire.py --only bow                    # one court
 python schoolhire.py --fixture get.json --start 2026-09-28 --days 7   # offline test
 ```

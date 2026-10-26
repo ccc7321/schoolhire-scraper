@@ -23,7 +23,7 @@ import json
 import re
 import sys
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -60,6 +60,7 @@ class Window:
     court_size: str
     notes: str
     link: str
+    drive: list[dict] = field(default_factory=list)  # [{"from": "Pell St", "min": 25}]
 
 
 # --------------------------------------------------------------------------- parsing
@@ -203,12 +204,12 @@ def print_table(windows: list[Window]) -> None:
     if not windows:
         print("No slots found that match your filters.")
         return
-    rows = [("Date", "Time", "Mins", "Free", "Court", "£", "Size", "Link")]
+    rows = [("Date", "Time", "Mins", "Free", "Court", "£", "Size", "Drive", "Link")]
     for w in windows:
         day = dt.date.fromisoformat(w.date).strftime("%a %d %b")
         rows.append((day, f"{w.start}-{w.end}", str(w.minutes), f"{w.min_free_pct}%",
                      w.court, "" if w.price is None else f"{w.price:g}",
-                     w.court_size, w.link))
+                     w.court_size, fmt_drive(w.drive), w.link))
     widths = [max(len(r[i]) for r in rows) for i in range(len(rows[0]) - 1)]
     for n, row in enumerate(rows):
         print("  ".join(c.ljust(widths[i]) for i, c in enumerate(row[:-1])) + "  " + row[-1])
@@ -224,10 +225,11 @@ def write_html(windows: list[Window], path: Path, criteria: str) -> None:
         f"<td>{html.escape(w.court)}</td>"
         f"<td>{'' if w.price is None else f'£{w.price:g}'}</td>"
         f"<td>{html.escape(w.court_size)}</td>"
+        f"<td>{html.escape(fmt_drive(w.drive))}</td>"
         f"<td>{html.escape(w.notes)}</td>"
         f"<td><a href=\"{html.escape(w.link)}\">book</a></td></tr>"
         for w in windows
-    ) or '<tr><td colspan="9">No slots found that match your filters.</td></tr>'
+    ) or '<tr><td colspan="10">No slots found that match your filters.</td></tr>'
     generated = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
     path.write_text(f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -244,7 +246,7 @@ th{{background:#222}} th,td{{border-color:#333}} a{{color:#8ab4f8}}}}
 <h1>Free basketball courts</h1>
 <p>{html.escape(criteria)}. Generated {generated}.</p>
 <div class="wrap"><table><thead><tr><th>Date</th><th>Time</th><th>Mins</th>
-<th>Free</th><th>Court</th><th>Price</th><th>Size</th><th>Notes</th>
+<th>Free</th><th>Court</th><th>Price</th><th>Size</th><th>Drive</th><th>Notes</th>
 <th></th></tr></thead><tbody>{body}</tbody></table></div>
 </body></html>
 """, encoding="utf-8")
@@ -311,15 +313,27 @@ def court_windows(court: dict, slots: list[Slot], min_free: int, min_minutes: in
         Window(court=court["name"], date=date, start=from_minutes(s), end=from_minutes(e),
                minutes=e - s, min_free_pct=pct, price=court.get("price"),
                court_size=court.get("court", ""),
-               notes=court.get("notes", ""), link=f"{page}?date={date}")
+               notes=court.get("notes", ""), link=f"{page}?date={date}",
+               drive=court.get("drive", []))
         for date, s, e, pct in find_windows(slots, min_free, min_minutes,
                                             after, before, weekdays)
     ]
 
 
+def shortest_drive(w: Window) -> int | None:
+    return min((d["min"] for d in w.drive), default=None)
+
+
+def fmt_drive(drive: list[dict]) -> str:
+    """[{"from": "Pell St", "min": 25}] -> "~25m from Pell St"."""
+    return ", ".join(f"~{d['min']}m from {d['from']}" for d in drive)
+
+
 SORT_KEYS = {
     "date": lambda w: (w.date, w.start, w.price or 0),
     "price": lambda w: (w.price is None, w.price or 0, w.date, w.start),
+    # courts without a drive guess go last
+    "drive": lambda w: (shortest_drive(w) is None, shortest_drive(w) or 0, w.date, w.start),
 }
 SORTS = tuple(SORT_KEYS)
 

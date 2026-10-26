@@ -73,11 +73,12 @@ button.link { font: inherit; font-size: 13px; background: none; border: 0; color
   cursor: pointer; padding: 4px 6px; }
 button.link:hover { color: var(--bad); }
 .court-list { margin-top: 12px; display: grid; gap: 6px; }
-.court-item { display: grid; grid-template-columns: 1fr 90px 90px auto; gap: 8px; align-items: center;
+.court-item { display: grid; grid-template-columns: 1fr 90px 90px 90px auto; gap: 8px; align-items: center;
   border-top: 1px solid var(--line); padding-top: 6px; }
 .court-item small { display: block; color: var(--muted); }
 .court-item input, .court-item select { width: 100%; }
 .msg { font-size: 13px; margin-top: 8px; }
+.hint { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
 .msg.ok { color: var(--good); }
 .msg.bad { color: var(--bad); }
 @media (max-width: 620px) {
@@ -110,7 +111,8 @@ button.link:hover { color: var(--bad); }
       <label>From <input type="time" id="after" step="1800"></label>
       <label>Until <input type="time" id="before" step="1800"></label>
       <label>Sort by
-        <select id="sort"><option value="date">Date</option><option value="price">Price</option></select></label>
+        <select id="sort"><option value="date">Date</option><option value="price">Price</option>
+          <option value="drive">Drive time</option></select></label>
     </div>
     <div class="row" id="groups"><span>Group</span></div>
     <div class="row" id="weekdays"><span>Days</span></div>
@@ -129,6 +131,11 @@ button.link:hover { color: var(--bad); }
       <button class="link" id="mDelete" type="button">Delete group</button>
       <button class="link" id="mNew" type="button" style="color:var(--accent)">+ New group</button>
     </div>
+    <div class="manage-row" id="mFromRow" style="margin-top:12px">
+      <label style="flex:1;min-width:160px">Driving from
+        <input type="text" id="mFrom" maxlength="60" placeholder="e.g. Home, Pell St or a postcode"></label>
+    </div>
+    <p class="hint" id="mFromHint"></p>
     <form class="manage-row" id="mAdd" style="margin-top:12px">
       <input type="url" id="mUrl" required
         placeholder="Paste a court's link, e.g. https://schoolhire.co.uk/…/basketball-court/4532">
@@ -195,6 +202,9 @@ function renderGroups(groups) {
     })));
 }
 const fmtPrice = p => p == null ? "price on site" : `£${p}`;
+// [{from: "Pell St", min: 25}] -> "~25 min from Pell St"
+const fmtDrive = (drive, short) => (drive || []).map(d =>
+  short ? `~${d.min}m` : `~${d.min} min from ${esc(d.from)}`).join(short ? " / " : " · ");
 
 function renderCourts(courts) {
   const row = $("courts");
@@ -204,7 +214,8 @@ function renderCourts(courts) {
       "No courts yet: add one under “Manage groups &amp; courts”</span>");
   }
   courts.forEach(c => {
-    const b = chip(`${esc(c.name)} <small>${fmtPrice(c.price)}</small>`,
+    const drive = fmtDrive(c.drive, true);
+    const b = chip(`${esc(c.name)} <small>${fmtPrice(c.price)}${drive ? " · " + drive : ""}</small>`,
       !state.hide.includes(c.url), () => {
         state.hide = state.hide.includes(c.url)
           ? state.hide.filter(x => x !== c.url) : [...state.hide, c.url];
@@ -240,7 +251,8 @@ function renderResults(data) {
           <div class="time">${date ? "" : `<div class="dur">${fmtDay(w.date)}</div>`}${w.start}–${w.end}</div>
           <div class="dur">${fmtDur(w.minutes)}</div>
           <div class="court"><b>${esc(w.court)}</b>
-            <small>${fmtPrice(w.price)} · ${esc(w.court_size)} court${w.notes ? " · " + esc(w.notes) : ""}</small></div>
+            <small>${fmtPrice(w.price)} · ${esc(w.court_size)} court${w.notes ? " · " + esc(w.notes) : ""}${
+              w.drive.length ? "<br>🚗 " + fmtDrive(w.drive) : ""}</small></div>
           <span class="badge ${w.min_free_pct === 100 ? "f100" : "fpart"}">${w.min_free_pct}% free</span>
           <a class="book" href="${esc(w.link)}" target="_blank" rel="noopener">Book ↗</a>
         </div>`).join("")}
@@ -291,7 +303,7 @@ async function manageCall(method, url, body) {
   const r = await fetch(url, { method, headers: { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body) });
   const json = await r.json();
-  if (!r.ok) { msg(json.error || r.statusText, false); return null; }
+  if (!r.ok) { msg(json.error || r.statusText, false); renderManage(); return null; }  // undo the bad edit
   groups = json.groups || json;
   renderManage();
   return json;
@@ -303,7 +315,11 @@ function renderManage() {
     `<option value="${esc(g.id)}">${esc(g.name)} (${g.courts.length})</option>`).join("");
   sel.value = groups.some(g => g.id === was) ? was : (groups[0] || {}).id || "";
   const g = mGroup();
-  ["mAdd", "mRename", "mDelete"].forEach(id => $(id).style.display = g ? "" : "none");
+  ["mAdd", "mRename", "mDelete", "mFromRow", "mFromHint"].forEach(id => $(id).style.display = g ? "" : "none");
+  if (g && document.activeElement !== $("mFrom")) $("mFrom").value = g.from || "";
+  const from = g && (g.from || g.name);
+  $("mFromHint").textContent = g ? `Put your guess of the drive from ${from} to each court in minutes. ` +
+    "Leave it blank if you don’t know. It’s shown on each slot and you can sort by it." : "";
   $("mCourts").innerHTML = !g ? "<p class=\"sub\">No groups yet. Press “+ New group” to make one.</p>"
     : !g.courts.length ? "<p class=\"sub\">No courts in this group yet. Paste a court’s link above.</p>"
     : g.courts.map(c => `
@@ -313,11 +329,19 @@ function renderManage() {
         <label>£ / hour <input type="number" min="0" step="0.01" value="${c.price ?? ""}" data-f="price"></label>
         <label>Size <select data-f="court"><option value="half"${c.court !== "full" ? " selected" : ""}>Half</option>
           <option value="full"${c.court === "full" ? " selected" : ""}>Full</option></select></label>
+        <label title="Your guess of the drive from ${esc(from)}">Drive (min)
+          <input type="number" min="0" max="600" step="1" placeholder="?" value="${c.drive_min ?? ""}" data-f="drive_min"></label>
         <button class="link" type="button" data-remove>Remove</button>
       </div>`).join("");
 }
 
 $("mGroup").addEventListener("change", () => { msg("", true); renderManage(); });
+$("mFrom").addEventListener("change", async () => {
+  const g = mGroup();
+  if (g && await manageCall("PUT", `/api/groups/${g.id}`, { from: $("mFrom").value })) {
+    msg("Saved.", true); load();
+  }
+});
 $("mNew").onclick = async () => {
   const name = (prompt("Name for the new group, e.g. Tuesday crew") || "").trim();
   if (!name) return;
@@ -350,7 +374,7 @@ $("mAdd").addEventListener("submit", async e => {
     load(true);
   }
 });
-// Editing a court's price or size saves straight away.
+// Editing a court's price, size or drive time saves straight away.
 $("mCourts").addEventListener("change", e => {
   const item = e.target.closest("[data-url]"), field = e.target.dataset.f;
   if (item && field) manageCall("PATCH", `/api/groups/${mGroup().id}/courts`,

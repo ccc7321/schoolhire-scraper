@@ -76,7 +76,8 @@ def get_slots(courts: list[dict], start: dt.date, days: int, refresh: bool) -> N
 
 
 def groups_summary(data: dict) -> list[dict]:
-    return [{"id": g["id"], "name": g["name"], "courts": g["courts"]} for g in data["groups"]]
+    return [{"id": g["id"], "name": g["name"], "from": g.get("from", ""), "courts": g["courts"]}
+            for g in data["groups"]]
 
 
 @app.errorhandler(store.CourtError)
@@ -116,7 +117,7 @@ def api_slots():
         entry = _cache[court["url"]]
         statuses.append({
             "name": court["name"], "price": court.get("price"), "court": court.get("court", ""),
-            "notes": court.get("notes", ""), "url": court["url"],
+            "notes": court.get("notes", ""), "url": court["url"], "drive": court["drive"],
             "error": entry["error"], "slots": len(entry["slots"]),
             "fetched_at": dt.datetime.fromtimestamp(entry["at"]).strftime("%H:%M"),
         })
@@ -149,8 +150,10 @@ def api_add_group():
 
 
 @app.put("/api/groups/<gid>")
-def api_rename_group(gid):
-    data = store.rename_group(gid, request.get_json(force=True).get("name"))
+def api_update_group(gid):
+    """{"name": ...} and/or {"from": "Pell St"}, where the group drives from."""
+    body = request.get_json(force=True)
+    data = store.update_group(gid, {k: body[k] for k in ("name", "from") if k in body})
     return jsonify(groups_summary(data))
 
 
@@ -174,7 +177,7 @@ def api_add_court(gid):
 
 @app.patch("/api/groups/<gid>/courts")
 def api_edit_court(gid):
-    """{"url": ..., and any of "name", "price", "court", "notes"}."""
+    """{"url": ..., and any of "name", "price", "court", "notes", "drive_min"}."""
     body = request.get_json(force=True)
     data = store.edit_court(gid, body.get("url", ""), body)
     return jsonify(groups_summary(data))

@@ -3,8 +3,12 @@
 Groups live in courts.json next to this file. It isn't in git, so everyone
 keeps their own: the first time, it starts as a copy of courts.example.json.
 
-    {"groups": [{"id": "east-london", "name": "East London",
-                 "courts": [{"name": ..., "url": ..., "price": 26.0, ...}]}]}
+    {"groups": [{"id": "east-london", "name": "East London", "from": "Pell St",
+                 "courts": [{"name": ..., "url": ..., "price": 26.0,
+                             "drive_min": 25, ...}]}]}
+
+"from" is where the group usually sets off from, and each court's "drive_min"
+is your guess at the drive from there, in minutes. Both are optional.
 
 Paste a court's link (from your browser's address bar on schoolhire.co.uk)
 and add_court() reads the school's name, postcode and hourly prices from that
@@ -33,6 +37,7 @@ _lock = threading.Lock()
 COURT_PATH_RE = re.compile(r"^/[\w%.-]+/[\w%.-]+/[\w%.-]+/(\d+)/?$")
 POSTCODE_RE = re.compile(r"\b[A-Z]{1,2}\d[A-Z\d]? \d[A-Z]{2}\b")
 PRICE_RE = re.compile(r"\d+\.\d{2}")
+MAX_DRIVE_MIN = 600
 
 
 class CourtError(ValueError):
@@ -63,15 +68,21 @@ def find_group(data: dict, group_id: str) -> dict:
 
 
 def courts_in(data: dict, group_id: str | None = None) -> list[dict]:
-    """One group's courts, or every court once (a court can be in several groups)."""
+    """One group's courts, or every court once (a court can be in several groups).
+
+    Each court comes back with "drive": [{"from": "Pell St", "min": 25}, ...],
+    the drive guesses from the groups it's in (only the chosen group's, if any).
+    """
     groups = [find_group(data, group_id)] if group_id else data["groups"]
-    seen, out = set(), []
+    by_url: dict[str, dict] = {}
     for g in groups:
         for c in g["courts"]:
-            if c["url"] not in seen:
-                seen.add(c["url"])
-                out.append(c)
-    return out
+            court = by_url.setdefault(c["url"], {**c, "drive": []})
+            if c.get("drive_min") is not None:
+                guess = {"from": g.get("from") or g["name"], "min": c["drive_min"]}
+                if guess not in court["drive"]:
+                    court["drive"].append(guess)
+    return list(by_url.values())
 
 
 def change(fn):
@@ -100,8 +111,17 @@ def add_group(name: str) -> dict:
 
 
 def rename_group(group_id: str, name: str) -> dict:
+    return update_group(group_id, {"name": name})
+
+
+def update_group(group_id: str, fields: dict) -> dict:
+    """Change a group's name and/or "from", where it drives from (e.g. "Pell St")."""
     def fn(data):
-        find_group(data, group_id)["name"] = clean_name(name)
+        group = find_group(data, group_id)
+        if "name" in fields:
+            group["name"] = clean_name(fields["name"])
+        if "from" in fields:
+            group["from"] = " ".join(str(fields["from"] or "").split())[:60]
     return change(fn)
 
 
@@ -113,7 +133,8 @@ def delete_group(group_id: str) -> dict:
 
 
 def edit_court(group_id: str, url: str, fields: dict) -> dict:
-    """Change a court's name, price (per hour), size ("half"/"full") or notes."""
+    """Change a court's name, price (per hour), size ("half"/"full"), notes or
+    drive_min (your guess at the drive from the group's "from", in minutes)."""
     def fn(data):
         court = next((c for c in find_group(data, group_id)["courts"] if c["url"] == url), None)
         if not court:
@@ -129,7 +150,22 @@ def edit_court(group_id: str, url: str, fields: dict) -> dict:
             court["court"] = "full" if str(fields["court"]).lower() == "full" else "half"
         if "notes" in fields:
             court["notes"] = " ".join(str(fields["notes"]).split())[:200]
+        if "drive_min" in fields:
+            court["drive_min"] = drive_minutes(fields["drive_min"])
     return change(fn)
+
+
+def drive_minutes(value) -> int | None:
+    """A drive guess in whole minutes, or None to clear it."""
+    if value in ("", None):
+        return None
+    try:
+        minutes = round(float(value))
+    except (TypeError, ValueError, OverflowError):  # "lots", "nan", "inf"
+        raise CourtError("the drive time must be a number of minutes, e.g. 25") from None
+    if not 0 <= minutes <= MAX_DRIVE_MIN:
+        raise CourtError(f"the drive time must be between 0 and {MAX_DRIVE_MIN} minutes")
+    return minutes
 
 
 def remove_court(group_id: str, url: str) -> dict:

@@ -73,15 +73,22 @@ class WindowsTest(unittest.TestCase):
 
 
 class SortTest(unittest.TestCase):
-    def window(self, court, price, date="2026-10-01"):
+    def window(self, court, price, date="2026-10-01", drive=()):
         return sh.Window(court=court, date=date, start="18:00", end="19:00", minutes=60,
-                         min_free_pct=100, price=price, court_size="half", notes="", link="")
+                         min_free_pct=100, price=price, court_size="half", notes="", link="",
+                         drive=[{"from": f, "min": m} for f, m in drive])
 
     def test_price_sort_puts_unknown_prices_last(self):
         ws = [self.window("a", None), self.window("b", 30), self.window("c", 20, "2026-10-02")]
         order = lambda sort: [w.court for w in sorted(ws, key=sh.SORT_KEYS[sort])]
         self.assertEqual(order("price"), ["c", "b", "a"])
         self.assertEqual(order("date"), ["a", "b", "c"])
+
+    def test_drive_sort_uses_the_shortest_guess_and_puts_unknown_last(self):
+        ws = [self.window("a", 20), self.window("b", 20, drive=[("Home", 40), ("Work", 15)]),
+              self.window("c", 20, drive=[("Home", 25)])]
+        self.assertEqual([w.court for w in sorted(ws, key=sh.SORT_KEYS["drive"])], ["b", "c", "a"])
+        self.assertEqual(sh.fmt_drive(ws[1].drive), "~40m from Home, ~15m from Work")
 
 
 class GroupTest(unittest.TestCase):

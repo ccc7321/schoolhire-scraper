@@ -90,6 +90,36 @@ class StorageTest(unittest.TestCase):
         data = store.rename_group("east-london", "  East   side ")
         self.assertEqual(data["groups"][0]["name"], "East side")
 
+    def test_drive_guesses(self):
+        dagenham = "https://schoolhire.co.uk/Dagenham/dagenham-park-leisure-centre/basketball-court/17294"
+        store.update_group("east-london", {"from": "  Pell   St "})
+        store.edit_court("east-london", dagenham, {"drive_min": "37.4"})
+        data = store.load()
+        self.assertEqual(data["groups"][0]["from"], "Pell St")
+        court = next(c for c in store.courts_in(data) if c["url"] == dagenham)
+        self.assertEqual((court["drive_min"], court["drive"]), (37, [{"from": "Pell St", "min": 37}]))
+        # courts without a guess have none
+        self.assertEqual(store.courts_in(data)[0]["drive"], [])
+
+        # the same court in another group, driving from somewhere else
+        weekend = store.add_group("Weekend")["groups"][-1]["id"]
+        data = store.load()
+        data["groups"][-1]["courts"].append({"name": "D", "url": dagenham, "drive_min": 55})
+        store.save(data)
+        both = next(c for c in store.courts_in(store.load()) if c["url"] == dagenham)
+        # no "from" set: the group's name stands in for it
+        self.assertEqual(both["drive"], [{"from": "Pell St", "min": 37}, {"from": "Weekend", "min": 55}])
+        only = store.courts_in(store.load(), weekend)
+        self.assertEqual([c["drive"] for c in only], [[{"from": "Weekend", "min": 55}]])
+
+        # blank clears it; nonsense is refused
+        store.edit_court("east-london", dagenham, {"drive_min": ""})
+        self.assertIsNone(next(c for c in store.load()["groups"][0]["courts"]
+                               if c["url"] == dagenham)["drive_min"])
+        for bad in ("lots", "-5", "601", "inf", "nan"):
+            with self.assertRaises(store.CourtError, msg=bad):
+                store.edit_court("east-london", dagenham, {"drive_min": bad})
+
 
 if __name__ == "__main__":
     unittest.main()
