@@ -62,6 +62,8 @@ button.primary:disabled { opacity: .6; cursor: default; }
 .fpart { background: var(--ok-soft); color: var(--ok); }
 a.book { font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; }
 a.book:hover { text-decoration: underline; }
+a.maps { color: var(--accent); text-decoration: none; white-space: nowrap; }
+a.maps:hover { text-decoration: underline; }
 .empty { text-align: center; color: var(--muted); padding: 32px 0; }
 .demo { background: var(--ok-soft); color: var(--ok); border-radius: 8px; padding: 6px 10px;
   font-size: 13px; display: inline-block; margin-bottom: 12px; }
@@ -234,6 +236,13 @@ const fmtDrive = (drive, short) => (drive || []).map(d => {
   return est ? `${d.min} min${d.miles != null ? ` (${d.miles} mi)` : ""} from ${esc(d.from)} · TomTom, ${esc(d.when)}`
              : `~${d.min} min from ${esc(d.from)} (guess)`;
 }).join(short ? " / " : " · ");
+// Google Maps driving directions; the same link the server builds for slots.
+const mapsLink = (from, dest) => "https://www.google.com/maps/dir/?" +
+  new URLSearchParams({ api: 1, origin: from, destination: dest, travelmode: "driving" });
+// [{from, url}] -> "Directions ↗", or "Directions from X ↗ · from Y ↗" for several places
+const fmtDirections = dirs => (dirs || []).map((d, i) =>
+  `<a class="maps" href="${esc(d.url)}" target="_blank" rel="noopener">${
+    dirs.length > 1 ? `${i ? "" : "Directions "}from ${esc(d.from)}` : "Directions"} ↗</a>`).join(" · ");
 
 function renderCourts(courts) {
   const row = $("courts");
@@ -281,7 +290,8 @@ function renderResults(data) {
           <div class="dur">${fmtDur(w.minutes)}</div>
           <div class="court"><b>${esc(w.court)}</b>
             <small>${fmtPrice(w.price)} · ${esc(w.court_size)} court${w.notes ? " · " + esc(w.notes) : ""}${
-              w.drive.length ? "<br>🚗 " + fmtDrive(w.drive) : ""}</small></div>
+              w.drive.length || w.directions.length ? "<br>🚗 " + [fmtDrive(w.drive), fmtDirections(w.directions)]
+                .filter(Boolean).join(" · ") : ""}</small></div>
           <span class="badge ${w.min_free_pct === 100 ? "f100" : "fpart"}">${w.min_free_pct}% free</span>
           <a class="book" href="${esc(w.link)}" target="_blank" rel="noopener">Book ↗</a>
         </div>`).join("")}
@@ -360,7 +370,8 @@ function renderManage() {
     : g.courts.map(c => `
       <div class="court-item" data-url="${esc(c.url)}">
         <div><b>${esc(c.name)}</b><small>${esc(c.postcode || "")}${c.notes ? " · " + esc(c.notes) : ""}
-          · <a href="${esc(c.url)}" target="_blank" rel="noopener">page ↗</a></small></div>
+          · <a href="${esc(c.url)}" target="_blank" rel="noopener">page ↗</a>${g.from ? ` · <a href="${
+            esc(mapsLink(g.from, c.postcode || c.name))}" target="_blank" rel="noopener">map ↗</a>` : ""}</small></div>
         <label>£ / hour <input type="number" min="0" step="0.01" value="${c.price ?? ""}" data-f="price"></label>
         <label>Size <select data-f="court"><option value="half"${c.court !== "full" ? " selected" : ""}>Half</option>
           <option value="full"${c.court === "full" ? " selected" : ""}>Full</option></select></label>

@@ -120,6 +120,27 @@ class StorageTest(unittest.TestCase):
             with self.assertRaises(store.CourtError, msg=bad):
                 store.edit_court("east-london", dagenham, {"drive_min": bad})
 
+    def test_directions_links(self):
+        atam = "https://schoolhire.co.uk/romford/atam/basketball-court/42220"
+        court = lambda gid=None: next(c for c in store.courts_in(store.load(), gid) if c["url"] == atam)
+        self.assertEqual(court()["directions"], [])  # no "from" yet
+        store.update_group("east-london", {"from": "NW9 4GD, London"})
+        self.assertEqual(court()["directions"], [{
+            "from": "NW9 4GD, London",
+            "url": "https://www.google.com/maps/dir/?api=1&origin=NW9+4GD%2C+London"
+                   "&destination=RM6+4XX&travelmode=driving"}])
+
+        # in two groups driving from different places: a link from each
+        data = store.add_group("Weekend")
+        weekend = data["groups"][-1]["id"]
+        store.update_group(weekend, {"from": "E1 6AN"})
+        data = store.load()
+        data["groups"][-1]["courts"].append({"name": "ATAM Academy", "url": atam})  # no postcode
+        store.save(data)
+        self.assertEqual([d["from"] for d in court()["directions"]], ["NW9 4GD, London", "E1 6AN"])
+        # without a postcode, the court's name is the destination
+        self.assertIn("destination=ATAM+Academy", court(weekend)["directions"][0]["url"])
+
 
 if __name__ == "__main__":
     unittest.main()

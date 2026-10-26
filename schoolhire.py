@@ -61,6 +61,7 @@ class Window:
     notes: str
     link: str
     drive: list[dict] = field(default_factory=list)  # [{"from": "Pell St", "min": 25}]
+    directions: list[dict] = field(default_factory=list)  # [{"from": ..., "url": Google Maps}]
 
 
 # --------------------------------------------------------------------------- parsing
@@ -225,7 +226,9 @@ def write_html(windows: list[Window], path: Path, criteria: str) -> None:
         f"<td>{html.escape(w.court)}</td>"
         f"<td>{'' if w.price is None else f'£{w.price:g}'}</td>"
         f"<td>{html.escape(w.court_size)}</td>"
-        f"<td>{html.escape(fmt_drive(w.drive))}</td>"
+        f"<td>{html.escape(fmt_drive(w.drive))}"
+        + "".join(f' <a href="{html.escape(d["url"])}">map</a>' for d in w.directions)
+        + "</td>"
         f"<td>{html.escape(w.notes)}</td>"
         f"<td><a href=\"{html.escape(w.link)}\">book</a></td></tr>"
         for w in windows
@@ -314,7 +317,7 @@ def court_windows(court: dict, slots: list[Slot], min_free: int, min_minutes: in
                minutes=e - s, min_free_pct=pct, price=court.get("price"),
                court_size=court.get("court", ""),
                notes=court.get("notes", ""), link=f"{page}?date={date}",
-               drive=court.get("drive", []))
+               drive=court.get("drive", []), directions=court.get("directions", []))
         for date, s, e, pct in find_windows(slots, min_free, min_minutes,
                                             after, before, weekdays)
     ]

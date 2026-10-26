@@ -119,6 +119,7 @@ def api_slots():
         statuses.append({
             "name": court["name"], "price": court.get("price"), "court": court.get("court", ""),
             "notes": court.get("notes", ""), "url": court["url"], "drive": court["drive"],
+            "directions": court["directions"],
             "error": entry["error"], "slots": len(entry["slots"]),
             "fetched_at": dt.datetime.fromtimestamp(entry["at"]).strftime("%H:%M"),
         })

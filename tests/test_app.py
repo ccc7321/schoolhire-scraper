@@ -103,6 +103,8 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(dagenham["drive"], [{"from": "Pell St", "min": 37}])
         self.assertEqual(data["windows"][0]["drive"], [{"from": "Pell St", "min": 37}])
         self.assertEqual(len(data["windows"]), 5)
+        self.assertEqual(data["windows"][0]["directions"][0]["from"], "Pell St")
+        self.assertIn("destination=RM10+9QH", data["windows"][0]["directions"][0]["url"])
 
     def test_site_down_when_adding(self):
         with mock.patch.object(store, "fetch_page", side_effect=OSError("timed out")):

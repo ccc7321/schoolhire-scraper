@@ -104,6 +104,12 @@ Open **Manage groups & courts** on the page:
   the closest courts first (courts with no guess go last). When you look at
   **All**, a court that's in several groups shows the guess from each.
 
+Once a group has a **Driving from** place, each slot also gets a
+**Directions ↗** link that opens Google Maps with driving directions from there
+to the court (by its postcode), and each court in **Manage groups & courts** has
+a **map ↗** link. Google Maps shows its own live drive time, which is handy for
+checking a guess. No key is needed.
+
 ### Drive times from TomTom
 
 Instead of guessing, you can let TomTom work the drive times out, including

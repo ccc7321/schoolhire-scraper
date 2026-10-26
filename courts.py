@@ -24,7 +24,7 @@ import re
 import threading
 import uuid
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 HERE = Path(__file__).resolve().parent
 PATH = HERE / "courts.json"
@@ -74,12 +74,17 @@ def courts_in(data: dict, group_id: str | None = None) -> list[dict]:
     Each court comes back with "drive": [{"from": "Pell St", "min": 25}, ...],
     the drive times from the groups it's in (only the chosen group's, if any).
     TomTom estimates also have "miles" and "when" (the departure, e.g. "Tue 18:00").
+    "directions" has a Google Maps link from each of those groups' "from" places.
     """
     groups = [find_group(data, group_id)] if group_id else data["groups"]
     by_url: dict[str, dict] = {}
     for g in groups:
         for c in g["courts"]:
-            court = by_url.setdefault(c["url"], {**c, "drive": []})
+            court = by_url.setdefault(c["url"], {**c, "drive": [], "directions": []})
+            start = (g.get("from") or "").strip()
+            if start and all(d["from"] != start for d in court["directions"]):
+                court["directions"].append(
+                    {"from": start, "url": maps_link(start, c.get("postcode") or c["name"])})
             if c.get("drive_min") is not None:
                 guess = {"from": g.get("from") or g["name"], "min": c["drive_min"]}
                 if c.get("drive_source") == "tomtom":  # an estimate, not a guess
@@ -87,6 +92,12 @@ def courts_in(data: dict, group_id: str | None = None) -> list[dict]:
                 if guess not in court["drive"]:
                     court["drive"].append(guess)
     return list(by_url.values())
+
+
+def maps_link(start: str, dest: str) -> str:
+    """Google Maps driving directions, e.g. from "NW9 4GD" to "RM6 4XX"."""
+    return "https://www.google.com/maps/dir/?" + urlencode(
+        {"api": 1, "origin": start, "destination": dest, "travelmode": "driving"})
 
 
 def change(fn):
