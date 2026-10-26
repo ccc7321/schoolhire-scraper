@@ -71,6 +71,12 @@ On the page you can:
 - limit to certain times (e.g. from 18:00) and days (e.g. Sat, Sun)
 - switch individual courts on or off, and sort by date, price or drive time
 - press **Book ↗** to open that court's calendar on schoolhire.co.uk for that day
+- sort by **Best match** to rank slots on price, drive time, how much of the
+  hall is free and length all at once. Sliders set what matters most to you
+  (0 = ignore it), and each slot shows its score and why, e.g. "Match 88 ·
+  cheap · close". Price and drive are compared with the other slots on screen;
+  a court with no price or drive time counts as middling. Slots of 3 hours or
+  more count as fully long
 - switch **Show** to **Week grid** to see each day as a timeline: a bar per
   court, green where the whole hall is free, amber where at least your chosen
   share is free, striped where it's booked, and blank where it isn't open. Tap a
