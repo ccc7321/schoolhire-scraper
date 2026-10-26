@@ -246,7 +246,7 @@ button.small { padding: 5px 10px; font-size: 13px; }
   <div class="toolbar">
     <span id="count"></span>
     <label class="sortby">Sort by
-      <select id="sort"><option value="best" selected>Best match</option><option value="date">Date</option>
+      <select id="sort"><option value="best" selected>Best match</option><option value="date">Time</option>
         <option value="price">Price</option><option value="drive">Distance</option>
         <option value="length">Longest slot</option><option value="free">Most of hall free</option></select></label>
   </div>
@@ -378,7 +378,8 @@ function scoreWindows(windows) {
   });
 }
 
-// The list is ordered by the chosen sort, with ties going to the better match. Date keeps the server's order (by day and time).
+// Slots are grouped by day; within each day they're ordered by the chosen sort,
+// with ties going to the better match. Date keeps the server's order (by day and time).
 const byTime = (a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start);
 const shortestDrive = w => w.drive.length ? Math.min(...w.drive.map(d => d.min)) : null;
 const unknownLast = (x, y) => (x == null) - (y == null) || (x ?? 0) - (y ?? 0);
@@ -459,8 +460,8 @@ function renderResults(data, pending = new Set()) {
   }
   const byDate = new Map();
   data.windows.forEach(w => (byDate.get(w.date) || byDate.set(w.date, []).get(w.date)).push(w));
-  const groups = $("sort").value === "date"
-    ? [...byDate.entries()] : [["", data.windows]];
+  // always one section per day, in date order; the chosen sort orders the slots within each day
+  const groups = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b));
   out.innerHTML = groups.map(([date, ws]) => `
     <section class="day">
       ${date ? `<h2>${fmtDay(date)} <span>${ws.length} slot${ws.length > 1 ? "s" : ""}</span></h2>` : ""}
