@@ -39,7 +39,10 @@ config = {"fixture": None, "delay": 1.0}
 
 # court url -> {"key": (start, days), "at": epoch secs, "slots": [...], "error": str|None}
 _cache: dict[str, dict] = {}
-_lock = threading.Lock()
+_lock = threading.Lock()  # guards _cache and _court_locks, never held while fetching
+_court_locks: dict[str, threading.Lock] = {}  # one per court, so a court is fetched once at a time
+REFETCH_GAP = 5  # seconds: a refresh right after a fetch (e.g. a double click) reuses it
+ERROR_RETRY = 60  # seconds: a court that failed is tried again after this, or on Refresh
 
 
 def default_start() -> dt.date:
@@ -59,21 +62,41 @@ def fetch_one(court: dict, start: dt.date, days: int) -> dict:
         return {"key": (start, days), "at": time.time(), "slots": [], "error": str(e)}
 
 
+def is_fresh(url: str, start: dt.date, days: int) -> bool:
+    """Whether the cache has a recent answer for this court and date range: its
+    slots, or an error that's too recent to be worth trying again yet."""
+    entry = _cache.get(url)
+    max_age = ERROR_RETRY if entry and entry["error"] else CACHE_MINUTES * 60
+    return bool(entry and entry["key"] == (start, days) and time.time() - entry["at"] <= max_age)
+
+
+def fetch_court(court: dict, start: dt.date, days: int, refresh: bool = False) -> dict:
+    """Make sure one court is in the cache (fetching it if needed) and return its entry.
+
+    Different courts are fetched in parallel; the same court waits for a fetch
+    that's already running instead of starting a second one.
+    """
+    url = court["url"]
+    with _lock:
+        court_lock = _court_locks.setdefault(url, threading.Lock())
+    with court_lock:
+        with _lock:
+            entry = _cache.get(url)
+            just_fetched = (entry and entry["key"] == (start, days)
+                            and time.time() - entry["at"] < REFETCH_GAP)
+            if is_fresh(url, start, days) and (not refresh or just_fetched):
+                return entry
+        entry = fetch_one(court, start, days)
+        with _lock:
+            _cache[url] = entry
+        return entry
+
+
 def get_slots(courts: list[dict], start: dt.date, days: int, refresh: bool) -> None:
     """Fill the cache for every court that is missing, stale or refreshed."""
-    with _lock:
-        now = time.time()
-        stale = [c for c in courts
-                 if refresh
-                 or c["url"] not in _cache
-                 or _cache[c["url"]]["key"] != (start, days)
-                 or _cache[c["url"]]["error"]
-                 or now - _cache[c["url"]]["at"] > CACHE_MINUTES * 60]
-        if stale:
-            with ThreadPoolExecutor(max_workers=len(stale)) as pool:
-                for court, entry in zip(stale, pool.map(
-                        lambda c: fetch_one(c, start, days), stale)):
-                    _cache[court["url"]] = entry
+    if courts:
+        with ThreadPoolExecutor(max_workers=len(courts)) as pool:
+            list(pool.map(lambda c: fetch_court(c, start, days, refresh), courts))
 
 
 def groups_summary(data: dict) -> list[dict]:
@@ -111,17 +134,26 @@ def api_slots():
         group = ""  # deleted meanwhile: show every court
     courts = store.courts_in(data, group or None)  # only the chosen group's courts are fetched
     start = default_start()
-    get_slots(courts, start, days, refresh=q.get("refresh") == "1")
+    # fetch=0: answer straight away from what's loaded so far, marking the rest
+    # "pending"; the page then asks /api/fetch for each pending court.
+    fetch = q.get("fetch") != "0"
+    if fetch:
+        get_slots(courts, start, days, refresh=q.get("refresh") == "1")
 
     windows, statuses = [], []
     for court in courts:
-        entry = _cache[court["url"]]
+        with _lock:
+            entry = _cache.get(court["url"])
+            pending = not fetch and not is_fresh(court["url"], start, days)
+        if entry is None or (pending and entry["key"] != (start, days)):
+            entry = {"at": None, "slots": [], "error": None}  # nothing usable yet
         statuses.append({
             "name": court["name"], "price": court.get("price"), "court": court.get("court", ""),
             "notes": court.get("notes", ""), "url": court["url"], "drive": court["drive"],
             "directions": court["directions"],
-            "error": entry["error"], "slots": len(entry["slots"]),
-            "fetched_at": dt.datetime.fromtimestamp(entry["at"]).strftime("%H:%M"),
+            "pending": pending, "error": None if pending else entry["error"],
+            "slots": len(entry["slots"]),
+            "fetched_at": entry["at"] and dt.datetime.fromtimestamp(entry["at"]).strftime("%H:%M"),
         })
         if court["url"] not in hidden:
             windows += sh.court_windows(court, entry["slots"], min_free, min_minutes,
@@ -139,6 +171,22 @@ def api_slots():
 
 
 # --------------------------------------------------------------------------- groups & courts
+
+@app.post("/api/fetch")
+def api_fetch():
+    """{"url": a court in your groups, "days": 14, "refresh": true}: fetch that one
+    court (unless it's already cached) so the page can show progress court by court."""
+    body = request.get_json(force=True)
+    try:
+        days = max(1, min(MAX_DAYS, int(body.get("days", 14))))
+    except (TypeError, ValueError):
+        return jsonify({"error": "bad days"}), 400
+    court = next((c for c in store.courts_in(store.load()) if c["url"] == body.get("url")), None)
+    if court is None:  # only courts you've added are ever fetched
+        return jsonify({"error": "that court isn't in any of your groups"}), 404
+    entry = fetch_court(court, default_start(), days, bool(body.get("refresh")))
+    return jsonify({"url": court["url"], "error": entry["error"], "slots": len(entry["slots"])})
+
 
 @app.get("/api/groups")
 def api_groups():

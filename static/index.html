@@ -37,6 +37,20 @@ select, input[type=time], input[type=text], input[type=url], input[type=number] 
   color: var(--muted); border-radius: 999px; padding: 5px 11px; cursor: pointer; }
 .chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
 .chip.err { border-color: var(--bad); }
+/* a court still being checked: small spinning ring before its name */
+.chip.loading::before { content: ""; display: inline-block; width: 9px; height: 9px; margin-right: 6px;
+  border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%;
+  vertical-align: -1px; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.progress { flex: 1 1 120px; max-width: 220px; height: 6px; background: var(--line); border-radius: 999px;
+  overflow: hidden; }
+.progress > div { height: 100%; width: 0; background: var(--accent); transition: width .25s; }
+.progress[hidden] { display: none; }
+.slot.stale { opacity: .45; }  /* old results while that court is being re-checked */
+@media (prefers-reduced-motion: reduce) {
+  .chip.loading::before { animation: none; border-top-color: var(--line); border-color: var(--accent); }
+  .progress > div { transition: none; }
+}
 .chip small { color: var(--muted); }
 .actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
 button.primary { font: inherit; font-weight: 600; background: var(--accent); color: var(--on-accent);
@@ -128,7 +142,9 @@ button.link:hover { color: var(--bad); }
     <div class="row" id="courts"><span>Courts</span></div>
     <div class="actions">
       <button class="primary" id="refresh">Refresh from site</button>
-      <span id="status">Loading…</span>
+      <div class="progress" id="progress" hidden role="progressbar" aria-label="Courts checked"
+        aria-valuemin="0"><div id="progressBar"></div></div>
+      <span id="status" aria-live="polite">Loading…</span>
     </div>
   </section>
 
@@ -180,7 +196,6 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const $ = id => document.getElementById(id);
 const FIELDS = ["days", "min_free", "min_minutes", "after", "before", "sort"];
 let state = { weekdays: [], hide: [], group: "" };
-let courtsSeen = false;
 
 function save() {
   const s = { ...state };
@@ -223,7 +238,6 @@ function renderGroups(groups) {
   [{ id: "", name: "All" }, ...groups].forEach(g =>
     row.appendChild(chip(esc(g.name), state.group === g.id, () => {
       state.group = g.id;
-      courtsSeen = false;
       load();
     })));
 }
@@ -244,7 +258,7 @@ const fmtDirections = dirs => (dirs || []).map((d, i) =>
   `<a class="maps" href="${esc(d.url)}" target="_blank" rel="noopener">${
     dirs.length > 1 ? `${i ? "" : "Directions "}from ${esc(d.from)}` : "Directions"} ↗</a>`).join(" · ");
 
-function renderCourts(courts) {
+function renderCourts(courts, pending = new Set()) {
   const row = $("courts");
   row.querySelectorAll(".chip").forEach(c => c.remove());
   if (!courts.length) {
@@ -259,8 +273,9 @@ function renderCourts(courts) {
           ? state.hide.filter(x => x !== c.url) : [...state.hide, c.url];
         load();
       });
-    b.title = c.error || c.notes || "";
-    if (c.error) b.classList.add("err");
+    b.title = pending.has(c.url) ? "Checking this court…" : c.error || c.notes || "";
+    if (pending.has(c.url)) b.classList.add("loading");
+    else if (c.error) b.classList.add("err");
     row.appendChild(b);
   });
 }
@@ -271,10 +286,14 @@ const fmtDay = iso => new Date(iso + "T12:00:00").toLocaleDateString("en-GB",
   { weekday: "long", day: "numeric", month: "short" });
 const fmtDur = m => (m >= 60 ? `${Math.floor(m / 60)}h` : "") + (m % 60 ? `${m % 60}m` : "");
 
-function renderResults(data) {
+const courtOf = w => w.link.split("?")[0];
+
+function renderResults(data, pending = new Set()) {
   const out = $("results");
   if (!data.windows.length) {
-    out.innerHTML = '<div class="empty">No slots match these filters. Try a lower % free, shorter slots or more days.</div>';
+    out.innerHTML = pending.size
+      ? '<div class="empty">Checking courts… slots appear here as each court is checked.</div>'
+      : '<div class="empty">No slots match these filters. Try a lower % free, shorter slots or more days.</div>';
     return;
   }
   const byDate = new Map();
@@ -285,7 +304,7 @@ function renderResults(data) {
     <section class="day">
       ${date ? `<h2>${fmtDay(date)} <span>${ws.length} slot${ws.length > 1 ? "s" : ""}</span></h2>` : ""}
       ${ws.map(w => `
-        <div class="slot">
+        <div class="slot${pending.has(courtOf(w)) ? " stale" : ""}">
           <div class="time">${date ? "" : `<div class="dur">${fmtDay(w.date)}</div>`}${w.start}–${w.end}</div>
           <div class="dur">${fmtDur(w.minutes)}</div>
           <div class="court"><b>${esc(w.court)}</b>
@@ -298,38 +317,105 @@ function renderResults(data) {
     </section>`).join("");
 }
 
+// Loading works court by court: /api/slots answers straight away with what's
+// already loaded (fetch=0) and says which courts are "pending"; each of those is
+// then fetched on its own with /api/fetch, and the page redraws as each arrives.
 let seq = 0;
-async function load(refresh = false) {
-  save();
-  const my = ++seq;
+let loading = null;  // { my, pending: Set of urls, refresh: Set of urls, total }
+
+function slotParams() {
   const p = new URLSearchParams();
   FIELDS.forEach(f => p.set(f, $(f).value));
   p.set("weekdays", state.weekdays.join(","));
   p.set("hide", state.hide.join("|"));
   p.set("group", state.group);
-  if (refresh) p.set("refresh", "1");
-  $("refresh").disabled = true;
-  $("status").textContent = refresh || !courtsSeen ? "Fetching court calendars…" : "Filtering…";
+  p.set("fetch", "0");
+  return p;
+}
+
+async function getSlots(my) {
+  const r = await fetch("/api/slots?" + slotParams());
+  const data = await r.json();
+  if (my !== seq) return null;  // a newer load has started
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+
+function render(data) {
+  const pending = loading ? loading.pending : new Set();
+  if (state.group !== data.group) { state.group = data.group; save(); }  // deleted group: All
+  renderGroups(data.groups);
+  renderCourts(data.courts, pending);
+  renderResults(data, pending);
+  const errs = data.courts.filter(c => c.error && !pending.has(c.url));
+  $("errors").innerHTML = errs.map(c => `<div><b>${esc(c.name)}</b>: ${esc(c.error)}</div>`).join("");
+  $("demo").innerHTML = data.demo ? '<span class="demo">Demo mode: showing the saved sample file, not live data.</span>' : "";
+  const range = `${fmtDay(data.start)} – ${fmtDay(data.end)}`;
+  if (pending.size) {
+    const done = loading.total - pending.size;
+    $("progress").hidden = false;
+    $("progress").setAttribute("aria-valuemax", loading.total);
+    $("progress").setAttribute("aria-valuenow", done);
+    $("progressBar").style.width = `${Math.round(100 * done / loading.total)}%`;
+    $("status").textContent = `Checked ${done} of ${loading.total} court${loading.total > 1 ? "s" : ""}… ` +
+      `${data.windows.length} slot${data.windows.length === 1 ? "" : "s"} so far`;
+  } else {
+    $("progress").hidden = true;
+    const at = data.courts.map(c => c.fetched_at).filter(Boolean).sort()[0];
+    $("status").textContent = `${data.windows.length} slots · ${range}${at ? ` · data from ${at}` : ""}`;
+  }
+  $("refresh").disabled = pending.size > 0;
+}
+
+// Redraws are coalesced: while one is in flight, further requests just ask for one more.
+let redrawing = false, redrawAgain = false;
+async function redraw(my) {
+  if (redrawing) { redrawAgain = true; return; }
+  redrawing = true;
   try {
-    const r = await fetch("/api/slots?" + p);
-    const data = await r.json();
-    if (my !== seq) return;
-    if (!r.ok) throw new Error(data.error || r.statusText);
-    courtsSeen = true;
-    if (state.group !== data.group) { state.group = data.group; save(); }  // deleted group: All
-    renderGroups(data.groups);
-    renderCourts(data.courts);
-    renderResults(data);
-    const errs = data.courts.filter(c => c.error);
-    $("errors").innerHTML = errs.map(c => `<div><b>${esc(c.name)}</b>: ${esc(c.error)}</div>`).join("");
-    const at = data.courts.map(c => c.fetched_at).sort()[0];
-    $("status").textContent = `${data.windows.length} slots · ${fmtDay(data.start)} – ${fmtDay(data.end)} · data from ${at}`;
-    $("demo").innerHTML = data.demo ? '<span class="demo">Demo mode: showing the saved sample file, not live data.</span>' : "";
+    do {
+      redrawAgain = false;
+      const data = await getSlots(my);
+      if (data) render(data);
+    } while (redrawAgain && my === seq);
   } catch (e) {
     if (my === seq) $("status").textContent = "Error: " + e.message;
   } finally {
-    if (my === seq) $("refresh").disabled = false;
+    redrawing = false;
   }
+}
+
+async function load(refresh = false) {
+  save();
+  const my = ++seq;
+  // a refresh still running carries on into this load (e.g. a filter changed meanwhile)
+  const carried = loading ? loading.refresh : new Set();
+  let data;
+  try {
+    data = await getSlots(my);
+    if (!data) return;
+  } catch (e) {
+    $("status").textContent = "Error: " + e.message;
+    return;
+  }
+  const urls = data.courts.map(c => c.url);
+  const refreshSet = new Set(urls.filter(u => refresh || carried.has(u)));
+  const pending = new Set(data.courts.filter(c => c.pending || refreshSet.has(c.url)).map(c => c.url));
+  loading = pending.size ? { my, pending, refresh: refreshSet, total: pending.size } : null;
+  render(data);
+  if (!pending.size) return;
+
+  await Promise.all([...pending].map(async url => {
+    try {
+      await fetch("/api/fetch", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, days: $("days").value, refresh: refreshSet.has(url) }) });
+    } catch (e) { /* shown as that court's error on the next redraw */ }
+    if (my !== seq) return;  // superseded: the newer load tracks this court itself
+    pending.delete(url);
+    refreshSet.delete(url);
+    if (!pending.size) loading = null;
+    redraw(my);
+  }));
 }
 
 // ------------------------------------------------------------------ manage groups & courts

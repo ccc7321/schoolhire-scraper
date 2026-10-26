@@ -72,9 +72,15 @@ On the page you can:
 - switch individual courts on or off, and sort by date, price or drive time
 - press **Book ↗** to open that court's calendar on schoolhire.co.uk for that day
 
+While courts are being checked, each court's button shows a small spinner and
+a bar shows how many are done. Slots appear as soon as each court is checked, so
+you don't wait for the slowest one. A court that fails turns red with the reason
+underneath, and the others carry on.
+
 Your filters are remembered between visits. Court data is cached for 10
 minutes, so changing filters is instant. Press **Refresh from site** to fetch
-new data.
+new data: the old slots stay on screen, faded, until each court is re-checked.
+A court that failed is tried again after a minute, or when you press Refresh.
 
 Other ways to start it:
 

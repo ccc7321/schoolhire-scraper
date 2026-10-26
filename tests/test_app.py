@@ -113,6 +113,65 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(r.status_code, 502)
         self.assertIn("timed out", r.get_json()["error"])
 
+    def test_court_by_court_loading(self):
+        # nothing loaded yet: answers at once, every court pending, no slots
+        data = self.client.get("/api/slots?fetch=0").get_json()
+        self.assertEqual(len(data["courts"]), 7)
+        self.assertTrue(all(c["pending"] for c in data["courts"]))
+        self.assertEqual(data["windows"], [])
+        self.assertEqual(court_app._cache, {})
+
+        # fetch one court: its slots appear, the others are still pending
+        r = self.client.post("/api/fetch", json={"url": DAGENHAM, "days": 14})
+        self.assertEqual(r.get_json(), {"url": DAGENHAM, "error": None, "slots": 19})
+        data = self.client.get("/api/slots?fetch=0").get_json()
+        self.assertEqual([c["url"] for c in data["courts"] if not c["pending"]], [DAGENHAM])
+        self.assertEqual(len(data["windows"]), 5)
+
+        # a different date range makes it pending again, without showing the old range
+        data = self.client.get("/api/slots?fetch=0&days=7").get_json()
+        self.assertTrue(all(c["pending"] for c in data["courts"]))
+        self.assertEqual(data["windows"], [])
+
+        # only courts in your groups can be fetched
+        r = self.client.post("/api/fetch", json={"url": "https://schoolhire.co.uk/a/b/c/1"})
+        self.assertEqual(r.status_code, 404)
+
+    def test_fetch_reuses_cache_unless_refreshed(self):
+        calls = []
+        real = court_app.fetch_one
+        def counting(court, start, days):
+            calls.append(court["url"])
+            return real(court, start, days)
+        with mock.patch.object(court_app, "fetch_one", counting):
+            for _ in range(2):
+                self.client.post("/api/fetch", json={"url": DAGENHAM})
+            self.assertEqual(len(calls), 1)
+            # a refresh straight after a fetch (double click) reuses it ...
+            self.client.post("/api/fetch", json={"url": DAGENHAM, "refresh": True})
+            self.assertEqual(len(calls), 1)
+            # ... but a refresh later fetches again
+            court_app._cache[DAGENHAM]["at"] -= court_app.REFETCH_GAP + 1
+            self.client.post("/api/fetch", json={"url": DAGENHAM, "refresh": True})
+            self.assertEqual(len(calls), 2)
+
+    def test_failed_court_shows_its_error_and_is_retried_later(self):
+        calls = []
+        def failing(court, start, days):
+            calls.append(1)
+            return {"key": (start, days), "at": court_app.time.time(), "slots": [],
+                    "error": "timed out"}
+        with mock.patch.object(court_app, "fetch_one", failing):
+            self.client.post("/api/fetch", json={"url": DAGENHAM})
+            data = self.client.get("/api/slots?fetch=0").get_json()
+            dagenham = next(c for c in data["courts"] if c["url"] == DAGENHAM)
+            self.assertEqual((dagenham["pending"], dagenham["error"]), (False, "timed out"))
+            self.client.post("/api/fetch", json={"url": DAGENHAM})
+            self.assertEqual(len(calls), 1)  # not straight away again
+            court_app._cache[DAGENHAM]["at"] -= court_app.ERROR_RETRY + 1
+            self.assertTrue(next(c for c in self.client.get("/api/slots?fetch=0").get_json()["courts"]
+                                 if c["url"] == DAGENHAM)["pending"])
+
     def test_bad_time(self):
         self.assertEqual(self.client.get("/api/slots?after=abc").status_code, 400)
 
