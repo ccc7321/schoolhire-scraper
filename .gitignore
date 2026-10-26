@@ -1,0 +1,6 @@
+__pycache__/
+results.html
+results.json
+# your own groups and courts (copied from courts.example.json the first time)
+courts.json
+courts.tmp
