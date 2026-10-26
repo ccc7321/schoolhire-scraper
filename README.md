@@ -58,7 +58,7 @@ Use the private `.venv` environment rather than a plain `pip install`: Homebrew'
 Python refuses system-wide installs ("externally-managed-environment").
 
 The app uses port 5050, because macOS uses port 5000 for AirPlay Receiver. If
-5050 is taken too, start it with another, e.g. `python app.py --port 5060`.
+5050 is taken too, start it with another, e.g. `python app.py --port 8080`.
 
 It starts with an example group, **East London**, with seven courts in it.
 Change it, delete it or make your own under **Manage groups & courts**.
@@ -139,6 +139,13 @@ from the court's page when you add it.
 
 One press uses about two TomTom requests per court, far inside the free
 allowance (around 2,500 a day).
+
+- **Find basketball courts near a postcode** searches schoolhire.co.uk for you:
+  type a postcode (`NW9 4GD`) or just its first half (`NW9`), pick a distance
+  and press **Search**. Every court in range is listed nearest first, with its
+  address and price where the site gives one. **+ Add** puts it in the group
+  you're looking at (it reads the court's page, like pasting its link), and
+  courts already in the group are marked ✓.
 
 The same court can be in more than one group; it's only checked once.
 

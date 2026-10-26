@@ -27,6 +27,7 @@ from flask import Flask, jsonify, request
 
 import courts as store
 import drive
+import search
 import schoolhire as sh
 
 HERE = Path(__file__).resolve().parent
@@ -171,6 +172,39 @@ def api_slots():
 
 
 # --------------------------------------------------------------------------- groups & courts
+
+@app.errorhandler(search.SearchError)
+def search_error(e):
+    return jsonify({"error": str(e)}), 400
+
+
+@app.get("/api/search")
+def api_search():
+    """?place=NW9 4GD&miles=10: basketball courts near a postcode, nearest first,
+    each marked with the groups it's already in."""
+    try:
+        miles = int(request.args.get("miles", 10))
+    except ValueError:
+        return jsonify({"error": "bad distance"}), 400
+    place = request.args.get("place", "")
+    try:
+        if config["fixture"]:  # demo: the saved search near NW9, no network
+            page = (HERE / "tests" / "search_results.html").read_text(encoding="utf-8")
+            center = search.center_from_page(page)
+            found = {"place": "NW9 (demo)", "center": {"lat": center[0], "lng": center[1]},
+                     "miles": 10, "results": search.parse_results(page, center)}
+            found["total"] = len(found["results"])
+        else:
+            found = search.find_courts(place, miles)
+    except search.SearchError:
+        raise
+    except Exception as e:  # schoolhire.co.uk or postcodes.io down, a timeout, …
+        return jsonify({"error": f"couldn't search schoolhire.co.uk: {e}"}), 502
+    groups = store.load()["groups"]
+    for r in found["results"]:
+        r["in_groups"] = [g["name"] for g in groups if any(c["url"] == r["url"] for c in g["courts"])]
+    return jsonify(found)
+
 
 @app.post("/api/fetch")
 def api_fetch():

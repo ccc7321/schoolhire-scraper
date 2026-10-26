@@ -101,6 +101,18 @@ button.link:hover { color: var(--bad); }
   letter-spacing: 0; font-weight: 400; font-size: 13px; }
 .tomtom input[type=password] { font: inherit; color: var(--text); background: var(--bg); flex: 1; min-width: 200px;
   border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; min-height: 36px; }
+.finder { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+.finder input[type=text] { flex: 1; min-width: 160px; }
+.find-item { display: grid; grid-template-columns: 1fr 70px 100px 110px; gap: 8px; align-items: center;
+  border-top: 1px solid var(--line); padding-top: 6px; font-size: 14px; }
+.find-item small { display: block; color: var(--muted); }
+.find-item .num { color: var(--muted); font-variant-numeric: tabular-nums; }
+.find-item .added { font-size: 13px; color: var(--good); }
+button.small { padding: 5px 10px; font-size: 13px; }
+@media (max-width: 620px) {
+  .find-item { grid-template-columns: 1fr auto; }
+  .find-item > div:first-child { grid-column: 1 / -1; }
+}
 .court-item small.src { font-size: 11px; text-transform: none; letter-spacing: 0; font-weight: 400; }
 .msg.ok { color: var(--good); }
 .msg.bad { color: var(--bad); }
@@ -185,6 +197,19 @@ button.link:hover { color: var(--bad); }
     </form>
     <div class="msg" id="mMsg"></div>
     <div class="court-list" id="mCourts"></div>
+    <div class="finder" id="finder">
+      <b>Find basketball courts near a postcode</b>
+      <form class="manage-row" id="fForm" style="margin-top:8px">
+        <input type="text" id="fPlace" required maxlength="10" placeholder="e.g. NW9 4GD, or just NW9"
+          aria-label="Postcode">
+        <select id="fMiles" aria-label="Distance"><option value="3">within 3 miles</option>
+          <option value="5">within 5 miles</option><option value="10" selected>within 10 miles</option>
+          <option value="15">within 15 miles</option><option value="20">within 20 miles</option></select>
+        <button class="primary" type="submit" id="fGo">Search</button>
+      </form>
+      <p class="hint" id="fMsg"></p>
+      <div class="court-list" id="fResults"></div>
+    </div>
   </details>
 
   <div class="errors" id="errors"></div>
@@ -440,13 +465,15 @@ function renderManage() {
     `<option value="${esc(g.id)}">${esc(g.name)} (${g.courts.length})</option>`).join("");
   sel.value = groups.some(g => g.id === was) ? was : (groups[0] || {}).id || "";
   const g = mGroup();
-  ["mAdd", "mRename", "mDelete", "mFromRow", "mFromHint", "mTomTom"].forEach(id => $(id).style.display = g ? "" : "none");
+  ["mAdd", "mRename", "mDelete", "mFromRow", "mFromHint", "mTomTom", "finder"].forEach(id => $(id).style.display = g ? "" : "none");
   if (g && g.depart && g.id !== renderManage.departFor) {  // the last departure used for this group
     const [day, time] = g.depart.split(" ");
     $("tDay").value = day; if (time) $("tTime").value = time;
     renderManage.departFor = g.id;
   }
   $("tTime").disabled = $("tDay").value === "now";
+  if (g && !$("fPlace").value && /^[A-Z]{1,2}\d/i.test(g.from || "")) $("fPlace").value = g.from.split(",")[0];
+  if (typeof renderFound === "function" && found) renderFound();
   if (g && document.activeElement !== $("mFrom")) $("mFrom").value = g.from || "";
   const from = g && (g.from || g.name);
   $("mFromHint").textContent = g ? `Put your guess of the drive from ${from} to each court in minutes, ` +
@@ -508,6 +535,65 @@ $("mAdd").addEventListener("submit", async e => {
     load(true);
   }
 });
+// ------------------------------------------------------------------ find courts nearby
+let found = null, showAll = false;  // the last search: { place, miles, total, results: [...] }
+const SHOW_FIRST = 15;
+
+function renderFound() {
+  const g = mGroup();
+  if (!found || !g) { $("fResults").innerHTML = ""; return; }
+  const inGroup = r => g.courts.some(c => c.url === r.url);
+  const list = showAll ? found.results : found.results.slice(0, SHOW_FIRST);
+  $("fMsg").textContent = `${found.results.length} basketball court${found.results.length === 1 ? "" : "s"} ` +
+    `within ${found.miles} miles of ${found.place}, nearest first. Courts are added to ${g.name}.`;
+  $("fResults").innerHTML = list.map(r => `
+    <div class="find-item" data-url="${esc(r.url)}">
+      <div><b>${esc(r.venue || r.facility || "Court " + r.id)}</b>
+        <small>${[r.venue && r.facility ? esc(r.facility) : "", esc(r.address || "")].filter(Boolean).join(" · ")}
+          ${r.address ? "· " : ""}<a href="${esc(r.url)}" target="_blank" rel="noopener">page ↗</a></small></div>
+      <span class="num">${r.miles != null ? `${r.miles} mi` : ""}</span>
+      <span class="num">${r.price != null ? `${r.price_from ? "from " : ""}£${r.price}` : "price on page"}</span>
+      ${inGroup(r) ? `<span class="added">✓ in ${esc(g.name)}</span>`
+        : `<button class="primary small" type="button" data-add title="Add to ${esc(g.name)}">+ Add</button>`}
+    </div>`).join("") + (!showAll && found.results.length > SHOW_FIRST
+      ? `<button class="link" type="button" id="fMore">Show all ${found.results.length}</button>` : "");
+}
+
+$("fForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("fGo").disabled = true;
+  $("fMsg").textContent = "Searching schoolhire.co.uk…";
+  $("fResults").innerHTML = "";
+  try {
+    const r = await fetch("/api/search?" + new URLSearchParams({ place: $("fPlace").value, miles: $("fMiles").value }));
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || r.statusText);
+    found = data; showAll = false;
+    renderFound();
+  } catch (err) {
+    found = null;
+    $("fMsg").textContent = "Error: " + err.message;
+  } finally {
+    $("fGo").disabled = false;
+  }
+});
+$("fResults").addEventListener("click", async e => {
+  if (e.target.id === "fMore") { showAll = true; return renderFound(); }
+  const item = e.target.closest("[data-url]");
+  if (!item || e.target.dataset.add === undefined) return;
+  const g = mGroup();
+  e.target.disabled = true;
+  e.target.textContent = "Adding…";
+  msg("Reading the court’s page…", true);
+  const res = await manageCall("POST", `/api/groups/${g.id}/courts`, { url: item.dataset.url });
+  if (res) {
+    const c = res.added;
+    msg(`Added ${c.name}${c.price != null ? ` (£${c.price}/hour, ${c.court} hall)` : ""} to ${g.name}.`, true);
+    load();  // only the new court is fetched
+  }
+  renderFound();
+});
+
 // ------------------------------------------------------------------ TomTom
 async function loadKey() {
   const r = await fetch("/api/settings"), k = await r.json();

@@ -172,6 +172,18 @@ class ApiTest(unittest.TestCase):
             self.assertTrue(next(c for c in self.client.get("/api/slots?fetch=0").get_json()["courts"]
                                  if c["url"] == DAGENHAM)["pending"])
 
+    def test_search_demo_marks_courts_you_have(self):
+        data = self.client.get("/api/search?place=NW9").get_json()
+        self.assertEqual((data["total"], len(data["results"])), (52, 52))
+        self.assertEqual(data["results"][0]["in_groups"], [])
+        rick = "https://schoolhire.co.uk/rickmansworth/rickmansworth-school/basketball-court/14655"
+        self.client.put("/api/groups/east-london", json={"name": "East London"})
+        data = store.load()
+        data["groups"][0]["courts"].append({"name": "Rickmansworth School", "url": rick})
+        store.save(data)
+        found = self.client.get("/api/search?place=NW9").get_json()["results"]
+        self.assertEqual(next(r for r in found if r["url"] == rick)["in_groups"], ["East London"])
+
     def test_bad_time(self):
         self.assertEqual(self.client.get("/api/slots?after=abc").status_code, 400)
 
