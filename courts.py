@@ -8,7 +8,8 @@ keeps their own: the first time, it starts as a copy of courts.example.json.
                              "drive_min": 25, ...}]}]}
 
 "from" is where the group usually sets off from, and each court's "drive_min"
-is your guess at the drive from there, in minutes. Both are optional.
+is the drive from there, in minutes: your guess, or a TomTom estimate (see
+drive.py) when "drive_source" is "tomtom". Both are optional.
 
 Paste a court's link (from your browser's address bar on schoolhire.co.uk)
 and add_court() reads the school's name, postcode and hourly prices from that
@@ -71,7 +72,8 @@ def courts_in(data: dict, group_id: str | None = None) -> list[dict]:
     """One group's courts, or every court once (a court can be in several groups).
 
     Each court comes back with "drive": [{"from": "Pell St", "min": 25}, ...],
-    the drive guesses from the groups it's in (only the chosen group's, if any).
+    the drive times from the groups it's in (only the chosen group's, if any).
+    TomTom estimates also have "miles" and "when" (the departure, e.g. "Tue 18:00").
     """
     groups = [find_group(data, group_id)] if group_id else data["groups"]
     by_url: dict[str, dict] = {}
@@ -80,6 +82,8 @@ def courts_in(data: dict, group_id: str | None = None) -> list[dict]:
             court = by_url.setdefault(c["url"], {**c, "drive": []})
             if c.get("drive_min") is not None:
                 guess = {"from": g.get("from") or g["name"], "min": c["drive_min"]}
+                if c.get("drive_source") == "tomtom":  # an estimate, not a guess
+                    guess.update(miles=c.get("drive_miles"), when=c.get("drive_when", ""))
                 if guess not in court["drive"]:
                     court["drive"].append(guess)
     return list(by_url.values())
@@ -152,6 +156,11 @@ def edit_court(group_id: str, url: str, fields: dict) -> dict:
             court["notes"] = " ".join(str(fields["notes"]).split())[:200]
         if "drive_min" in fields:
             court["drive_min"] = drive_minutes(fields["drive_min"])
+            # typed by you: it's a guess now, not a TomTom estimate
+            for k in ("drive_source", "drive_miles", "drive_when"):
+                court.pop(k, None)
+            if court["drive_min"] is not None:
+                court["drive_source"] = "guess"
     return change(fn)
 
 

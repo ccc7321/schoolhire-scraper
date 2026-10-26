@@ -26,6 +26,7 @@ from pathlib import Path
 from flask import Flask, jsonify, request
 
 import courts as store
+import drive
 import schoolhire as sh
 
 HERE = Path(__file__).resolve().parent
@@ -76,8 +77,8 @@ def get_slots(courts: list[dict], start: dt.date, days: int, refresh: bool) -> N
 
 
 def groups_summary(data: dict) -> list[dict]:
-    return [{"id": g["id"], "name": g["name"], "from": g.get("from", ""), "courts": g["courts"]}
-            for g in data["groups"]]
+    return [{"id": g["id"], "name": g["name"], "from": g.get("from", ""),
+             "depart": g.get("depart", ""), "courts": g["courts"]} for g in data["groups"]]
 
 
 @app.errorhandler(store.CourtError)
@@ -187,6 +188,31 @@ def api_edit_court(gid):
 def api_remove_court(gid):
     data = store.remove_court(gid, request.args.get("url", ""))
     return jsonify(groups_summary(data))
+
+
+@app.post("/api/groups/<gid>/estimate")
+def api_estimate(gid):
+    """{"depart": "tue 18:00" or "now", "replace": true to overwrite your own guesses}."""
+    body = request.get_json(force=True)
+    try:
+        result = drive.estimate_group(gid, body.get("depart"), bool(body.get("replace")))
+    except store.CourtError:
+        raise
+    except Exception as e:  # TomTom or postcodes.io down, a timeout, …
+        return jsonify({"error": f"couldn't get drive times: {e}"}), 502
+    return jsonify({**result, "groups": groups_summary(store.load())})
+
+
+@app.get("/api/settings")
+def api_settings():
+    return jsonify(drive.key_status())
+
+
+@app.put("/api/settings")
+def api_save_settings():
+    """{"tomtom_key": "..."}; an empty key removes it."""
+    drive.save_key(request.get_json(force=True).get("tomtom_key", ""))
+    return jsonify(drive.key_status())
 
 
 @app.get("/")

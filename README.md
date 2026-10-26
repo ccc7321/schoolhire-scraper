@@ -62,6 +62,30 @@ Open **Manage groups & courts** on the page:
   the closest courts first (courts with no guess go last). When you look at
   **All**, a court that's in several groups shows the guess from each.
 
+### Drive times from TomTom
+
+Instead of guessing, you can let TomTom work the drive times out, including
+its usual traffic for when you'd set off:
+
+1. Get a free key at https://developer.tomtom.com (sign up, then
+   **Dashboard → Keys**; no card needed). Paste it into **Estimate drive times
+   with TomTom** and press **Save key**. It's saved in `settings.json` next to
+   `app.py`, which isn't in git, and the page only ever shows its last four
+   characters. You can also set the `TOMTOM_API_KEY` environment variable.
+2. Set **Driving from** for the group. A postcode works best (`E1 6AN`); a
+   place name (`Pell St, London`) works too.
+3. Pick when you'd leave, e.g. **Tuesday 18:00** (the next one coming up), or
+   **Now**, and press **Estimate drive times**.
+
+Each court then shows e.g. "37 min (12 mi) from E1 6AN · TomTom, Tue 18:00".
+Courts where you typed your own number keep it unless you tick **also replace my
+own guesses**; typing a number over an estimate makes it your guess again.
+Courts are found by their postcode (via the free postcodes.io), which is read
+from the court's page when you add it.
+
+One press uses about two TomTom requests per court, far inside the free
+allowance (around 2,500 a day).
+
 The same court can be in more than one group; it's only checked once.
 
 Your groups are saved in `courts.json` next to `app.py`. It's in `.gitignore`,

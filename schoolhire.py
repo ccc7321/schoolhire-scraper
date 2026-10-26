@@ -325,8 +325,11 @@ def shortest_drive(w: Window) -> int | None:
 
 
 def fmt_drive(drive: list[dict]) -> str:
-    """[{"from": "Pell St", "min": 25}] -> "~25m from Pell St"."""
-    return ", ".join(f"~{d['min']}m from {d['from']}" for d in drive)
+    """[{"from": "Pell St", "min": 25}] -> "~25m from Pell St" (a guess), or
+    "25m from Pell St (TomTom Tue 18:00)" for an estimate."""
+    return ", ".join(
+        f"{d['min']}m from {d['from']} (TomTom {d['when']})" if "when" in d
+        else f"~{d['min']}m from {d['from']}" for d in drive)
 
 
 SORT_KEYS = {

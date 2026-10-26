@@ -79,6 +79,13 @@ button.link:hover { color: var(--bad); }
 .court-item input, .court-item select { width: 100%; }
 .msg { font-size: 13px; margin-top: 8px; }
 .hint { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+.tomtom { margin-top: 12px; border: 1px dashed var(--line); border-radius: 10px; padding: 10px 12px; }
+.tomtom .manage-row { margin-top: 8px; }
+.tomtom label.check { flex-direction: row; align-items: center; gap: 6px; text-transform: none;
+  letter-spacing: 0; font-weight: 400; font-size: 13px; }
+.tomtom input[type=password] { font: inherit; color: var(--text); background: var(--bg); flex: 1; min-width: 200px;
+  border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; min-height: 36px; }
+.court-item small.src { font-size: 11px; text-transform: none; letter-spacing: 0; font-weight: 400; }
 .msg.ok { color: var(--good); }
 .msg.bad { color: var(--bad); }
 @media (max-width: 620px) {
@@ -136,6 +143,23 @@ button.link:hover { color: var(--bad); }
         <input type="text" id="mFrom" maxlength="60" placeholder="e.g. Home, Pell St or a postcode"></label>
     </div>
     <p class="hint" id="mFromHint"></p>
+    <div class="tomtom" id="mTomTom">
+      <b>Estimate drive times with TomTom</b>
+      <div class="manage-row" id="tKeyRow">
+        <input type="password" id="tKey" autocomplete="off" placeholder="Paste your free TomTom API key">
+        <button class="link" id="tKeySave" type="button" style="color:var(--accent)">Save key</button>
+      </div>
+      <p class="hint" id="tKeyHint"></p>
+      <div class="manage-row" id="tEstRow">
+        <label>Leaving <select id="tDay"><option value="now">Now</option>
+          <option value="mon">Monday</option><option value="tue">Tuesday</option><option value="wed">Wednesday</option>
+          <option value="thu">Thursday</option><option value="fri">Friday</option><option value="sat">Saturday</option>
+          <option value="sun">Sunday</option></select></label>
+        <label>At <input type="time" id="tTime" value="18:00" step="900"></label>
+        <label class="check"><input type="checkbox" id="tReplace"> also replace my own guesses</label>
+        <button class="primary" id="tEstimate" type="button">Estimate drive times</button>
+      </div>
+    </div>
     <form class="manage-row" id="mAdd" style="margin-top:12px">
       <input type="url" id="mUrl" required
         placeholder="Paste a court's link, e.g. https://schoolhire.co.uk/…/basketball-court/4532">
@@ -202,9 +226,14 @@ function renderGroups(groups) {
     })));
 }
 const fmtPrice = p => p == null ? "price on site" : `£${p}`;
-// [{from: "Pell St", min: 25}] -> "~25 min from Pell St"
-const fmtDrive = (drive, short) => (drive || []).map(d =>
-  short ? `~${d.min}m` : `~${d.min} min from ${esc(d.from)}`).join(short ? " / " : " · ");
+// A guess: "~25 min from Pell St". A TomTom estimate (has "when"):
+// "25 min (8.1 mi) from Pell St · TomTom, Tue 18:00".
+const fmtDrive = (drive, short) => (drive || []).map(d => {
+  const est = d.when !== undefined;
+  if (short) return `${est ? "" : "~"}${d.min}m`;
+  return est ? `${d.min} min${d.miles != null ? ` (${d.miles} mi)` : ""} from ${esc(d.from)} · TomTom, ${esc(d.when)}`
+             : `~${d.min} min from ${esc(d.from)} (guess)`;
+}).join(short ? " / " : " · ");
 
 function renderCourts(courts) {
   const row = $("courts");
@@ -315,11 +344,17 @@ function renderManage() {
     `<option value="${esc(g.id)}">${esc(g.name)} (${g.courts.length})</option>`).join("");
   sel.value = groups.some(g => g.id === was) ? was : (groups[0] || {}).id || "";
   const g = mGroup();
-  ["mAdd", "mRename", "mDelete", "mFromRow", "mFromHint"].forEach(id => $(id).style.display = g ? "" : "none");
+  ["mAdd", "mRename", "mDelete", "mFromRow", "mFromHint", "mTomTom"].forEach(id => $(id).style.display = g ? "" : "none");
+  if (g && g.depart && g.id !== renderManage.departFor) {  // the last departure used for this group
+    const [day, time] = g.depart.split(" ");
+    $("tDay").value = day; if (time) $("tTime").value = time;
+    renderManage.departFor = g.id;
+  }
+  $("tTime").disabled = $("tDay").value === "now";
   if (g && document.activeElement !== $("mFrom")) $("mFrom").value = g.from || "";
   const from = g && (g.from || g.name);
-  $("mFromHint").textContent = g ? `Put your guess of the drive from ${from} to each court in minutes. ` +
-    "Leave it blank if you don’t know. It’s shown on each slot and you can sort by it." : "";
+  $("mFromHint").textContent = g ? `Put your guess of the drive from ${from} to each court in minutes, ` +
+    "or let TomTom estimate them below. It’s shown on each slot and you can sort by it." : "";
   $("mCourts").innerHTML = !g ? "<p class=\"sub\">No groups yet. Press “+ New group” to make one.</p>"
     : !g.courts.length ? "<p class=\"sub\">No courts in this group yet. Paste a court’s link above.</p>"
     : g.courts.map(c => `
@@ -329,8 +364,10 @@ function renderManage() {
         <label>£ / hour <input type="number" min="0" step="0.01" value="${c.price ?? ""}" data-f="price"></label>
         <label>Size <select data-f="court"><option value="half"${c.court !== "full" ? " selected" : ""}>Half</option>
           <option value="full"${c.court === "full" ? " selected" : ""}>Full</option></select></label>
-        <label title="Your guess of the drive from ${esc(from)}">Drive (min)
-          <input type="number" min="0" max="600" step="1" placeholder="?" value="${c.drive_min ?? ""}" data-f="drive_min"></label>
+        <label title="Drive from ${esc(from)}">Drive (min)
+          <input type="number" min="0" max="600" step="1" placeholder="?" value="${c.drive_min ?? ""}" data-f="drive_min">
+          <small class="src">${c.drive_source === "tomtom" ? `TomTom, ${esc(c.drive_when || "")}`
+            : c.drive_min != null ? "your guess" : ""}</small></label>
         <button class="link" type="button" data-remove>Remove</button>
       </div>`).join("");
 }
@@ -374,6 +411,47 @@ $("mAdd").addEventListener("submit", async e => {
     load(true);
   }
 });
+// ------------------------------------------------------------------ TomTom
+async function loadKey() {
+  const r = await fetch("/api/settings"), k = await r.json();
+  $("tKeyHint").innerHTML = k.tomtom_key_set
+    ? `Key saved (${esc(k.key_hint)})${k.from_env ? " from TOMTOM_API_KEY" : ""}. ` +
+      "Paste a new one above to change it, or save it empty to remove it."
+    : 'Get a free key (no card needed) at <a href="https://developer.tomtom.com" target="_blank" ' +
+      'rel="noopener">developer.tomtom.com</a> → Dashboard → Keys. It stays on this computer.';
+  $("tEstimate").disabled = !k.tomtom_key_set;
+}
+$("tKeySave").onclick = async () => {
+  const r = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tomtom_key: $("tKey").value }) });
+  const k = await r.json();
+  if (!r.ok) return msg(k.error, false);
+  $("tKey").value = "";
+  msg(k.tomtom_key_set ? "Key saved." : "Key removed.", true);
+  loadKey();
+};
+$("tDay").addEventListener("change", () => $("tTime").disabled = $("tDay").value === "now");
+$("tEstimate").onclick = async () => {
+  const g = mGroup();
+  if (!g) return;
+  const depart = $("tDay").value === "now" ? "now" : `${$("tDay").value} ${$("tTime").value || "18:00"}`;
+  $("tEstimate").disabled = true;
+  msg(`Asking TomTom for ${g.courts.length} court(s)…`, true);
+  try {
+    const res = await manageCall("POST", `/api/groups/${g.id}/estimate`,
+      { depart, replace: $("tReplace").checked });
+    if (!res) return;
+    const parts = [`Updated ${res.updated.length} court(s) for leaving ${res.depart}.`];
+    if (res.skipped.length) parts.push(`Kept your own guess for ${res.skipped.join(", ")}.`);
+    const failed = Object.entries(res.failed);
+    if (failed.length) parts.push("Couldn’t do " + failed.map(([n, why]) => `${n} (${why})`).join(", ") + ".");
+    msg(parts.join(" "), !failed.length);
+    load();
+  } finally {
+    $("tEstimate").disabled = false;
+  }
+};
+
 // Editing a court's price, size or drive time saves straight away.
 $("mCourts").addEventListener("change", e => {
   const item = e.target.closest("[data-url]"), field = e.target.dataset.f;
@@ -391,6 +469,7 @@ $("mCourts").addEventListener("click", async e => {
 restore();
 renderWeekdays();
 manageCall("GET", "/api/groups");
+loadKey();
 FIELDS.forEach(f => $(f).addEventListener("change", () => load()));
 $("refresh").onclick = () => load(true);
 load();
