@@ -47,13 +47,11 @@ select, input[type=time], input[type=text], input[type=url], input[type=number] 
 .progress > div { height: 100%; width: 0; background: var(--accent); transition: width .25s; }
 .progress[hidden] { display: none; }
 .slot.stale { opacity: .45; }
-.weights { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; margin-top: 12px; }
-.weights[hidden] { display: none; }
-.weights > span { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
-.weights label { flex-direction: row; align-items: center; gap: 6px; text-transform: none; letter-spacing: 0;
-  font-weight: 400; font-size: 13px; }
-.weights input { width: 90px; accent-color: var(--accent); }
-.match { color: var(--accent); font-weight: 600; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0 0 10px; }
+#count { font-weight: 700; }
+label.sortby { flex-direction: row; align-items: center; gap: 8px; font-size: 14px; color: var(--text);
+  text-transform: none; letter-spacing: 0; }
+label.sortby select { min-width: 170px; border-radius: 999px; padding: 7px 12px; font-weight: 600; }
 /* week grid: one timeline bar per court for each day */
 .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); margin: 0 0 12px; }
 .legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
@@ -178,19 +176,8 @@ button.small { padding: 5px 10px; font-size: 13px; }
           <option value="90">1.5 hours</option><option value="120">2 hours</option></select></label>
       <label>From <input type="time" id="after" step="1800"></label>
       <label>Until <input type="time" id="before" step="1800"></label>
-      <label>Sort by
-        <select id="sort"><option value="best" selected>Best match</option><option value="date">Date</option>
-          <option value="price">Price (cheapest)</option><option value="drive">Distance (drive time)</option>
-          <option value="length">Longest slot</option><option value="free">Most of hall free</option></select></label>
       <label>Show
         <select id="view"><option value="list">List</option><option value="grid">Week grid</option></select></label>
-    </div>
-    <div class="weights" id="weights" hidden>
-      <span>What matters most?</span>
-      <label>Price <input type="range" min="0" max="3" step="1" data-w="price"></label>
-      <label>Drive <input type="range" min="0" max="3" step="1" data-w="drive"></label>
-      <label>Hall free <input type="range" min="0" max="3" step="1" data-w="free"></label>
-      <label>Length <input type="range" min="0" max="3" step="1" data-w="length"></label>
     </div>
     <div class="row" id="groups"><span>Group</span></div>
     <div class="row" id="weekdays"><span>Days</span></div>
@@ -256,6 +243,13 @@ button.small { padding: 5px 10px; font-size: 13px; }
   </details>
 
   <div class="errors" id="errors"></div>
+  <div class="toolbar">
+    <span id="count"></span>
+    <label class="sortby">Sort by
+      <select id="sort"><option value="best" selected>Best match</option><option value="date">Date</option>
+        <option value="price">Price</option><option value="drive">Distance</option>
+        <option value="length">Longest slot</option><option value="free">Most of hall free</option></select></label>
+  </div>
   <div id="results"></div>
 </main>
 
@@ -263,8 +257,7 @@ button.small { padding: 5px 10px; font-size: 13px; }
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const $ = id => document.getElementById(id);
 const FIELDS = ["days", "min_free", "min_minutes", "after", "before", "sort", "view"];
-const DEFAULT_WEIGHTS = { price: 2, drive: 2, free: 1, length: 1 };
-let state = { weekdays: [], hide: [], group: "", weights: { ...DEFAULT_WEIGHTS } };
+let state = { weekdays: [], hide: [], group: "" };
 
 function save() {
   const s = { ...state };
@@ -281,7 +274,6 @@ function restore() {
     state.weekdays = s.weekdays || [];
     state.hide = s.hide || [];
     state.group = s.group || "";
-    state.weights = { ...DEFAULT_WEIGHTS, ...(s.weights || {}) };
   } catch (e) {}
 }
 
@@ -359,13 +351,16 @@ const fmtDur = m => (m >= 60 ? `${Math.floor(m / 60)}h` : "") + (m % 60 ? `${m %
 
 const courtOf = w => w.link.split("?")[0];
 
-// Best match: each slot gets 0-1 for price (cheapest = 1), drive (closest = 1),
-// hall free (whole hall = 1) and length (longest, up to 3 hours, = 1). Price and
-// drive are compared with the other slots shown; a court with no price or drive
-// time counts as middling (0.5). The score is the weighted average, 0-100.
+// Best match (the default sort) weighs up price, drive time, how much of the hall
+// is free and length together. Each slot gets 0-1 for price (cheapest = 1), drive
+// (closest = 1), hall free (whole hall = 1) and length (longest, up to 3 hours,
+// = 1); price and drive are compared with the other slots shown, and a court with
+// no price or drive time counts as middling (0.5). The score isn't shown, it
+// only orders the list.
 const LONG_ENOUGH = 180;
+const BEST_WEIGHTS = { price: 2, drive: 2, free: 1, length: 1 };
 function scoreWindows(windows) {
-  const w = state.weights, total = w.price + w.drive + w.free + w.length || 1;
+  const w = BEST_WEIGHTS, total = w.price + w.drive + w.free + w.length;
   const drive = x => x.drive.length ? Math.min(...x.drive.map(d => d.min)) : null;
   const scale = (vals, v) => {
     const known = vals.filter(x => x != null);
@@ -379,15 +374,11 @@ function scoreWindows(windows) {
     const parts = { price: scale(prices, x.price), drive: scale(drives, drive(x)),
       free: x.min_free_pct / 100, length: Math.min(x.minutes, LONG_ENOUGH) / longest };
     const score = Math.round(100 * Object.keys(parts).reduce((sum, k) => sum + w[k] * parts[k], 0) / total);
-    const why = [["price", "cheap"], ["drive", "close"], ["free", "whole hall"], ["length", "long slot"]]
-      .filter(([k]) => w[k] > 0 && parts[k] >= 0.75 && (k !== "free" || parts.free === 1))
-      .sort((a, b) => w[b[0]] * parts[b[0]] - w[a[0]] * parts[a[0]]).slice(0, 3).map(([, t]) => t);
-    return { ...x, score, why };
+    return { ...x, score };
   });
 }
 
-// Every slot gets its match score; the list is then ordered by the chosen sort,
-// with ties going to the better match. Date keeps the server's order (by day and time).
+// The list is ordered by the chosen sort, with ties going to the better match. Date keeps the server's order (by day and time).
 const byTime = (a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start);
 const shortestDrive = w => w.drive.length ? Math.min(...w.drive.map(d => d.min)) : null;
 const unknownLast = (x, y) => (x == null) - (y == null) || (x ?? 0) - (y ?? 0);
@@ -480,8 +471,7 @@ function renderResults(data, pending = new Set()) {
           <div class="court"><b>${esc(w.court)}</b>
             <small>${fmtPrice(w.price)} · ${esc(w.court_size)} court${w.notes ? " · " + esc(w.notes) : ""}${
               w.drive.length || w.directions.length ? "<br>🚗 " + [fmtDrive(w.drive), fmtDirections(w.directions)]
-                .filter(Boolean).join(" · ") : ""}${w.score != null ? `<br><span class="match">Match ${w.score}</span>${
-              w.why.length ? " · " + w.why.join(" · ") : ""}` : ""}</small></div>
+                .filter(Boolean).join(" · ") : ""}</small></div>
           <span class="badge ${w.min_free_pct === 100 ? "f100" : "fpart"}">${w.min_free_pct}% free</span>
           <a class="book" href="${esc(w.link)}" target="_blank" rel="noopener">Book ↗</a>
         </div>`).join("")}
@@ -512,14 +502,14 @@ async function getSlots(my) {
   return data;
 }
 
-let lastData = null;
 function render(data) {
-  lastData = data;
   const pending = loading ? loading.pending : new Set();
   if (state.group !== data.group) { state.group = data.group; save(); }  // deleted group: All
   renderGroups(data.groups);
   renderCourts(data.courts, pending);
   renderResults(data, pending);
+  const n = data.windows.length;
+  $("count").textContent = pending.size && !n ? "" : `${n} slot${n === 1 ? "" : "s"}${pending.size ? " so far" : ""}`;
   const errs = data.courts.filter(c => c.error && !pending.has(c.url));
   $("errors").innerHTML = errs.map(c => `<div><b>${esc(c.name)}</b>: ${esc(c.error)}</div>`).join("");
   $("demo").innerHTML = data.demo ? '<span class="demo">Demo mode: showing the saved sample file, not live data.</span>' : "";
@@ -797,19 +787,7 @@ $("mCourts").addEventListener("click", async e => {
       && await manageCall("DELETE", `/api/groups/${g.id}/courts?url=${encodeURIComponent(c.url)}`)) load();
 });
 
-function renderWeights() {
-  $("weights").hidden = $("view").value === "grid";  // the scores show on every list sort
-  document.querySelectorAll("[data-w]").forEach(i => i.value = state.weights[i.dataset.w]);
-}
-document.querySelectorAll("[data-w]").forEach(i => i.addEventListener("input", () => {
-  state.weights[i.dataset.w] = +i.value;
-  save();
-  if (lastData) renderResults(lastData, loading ? loading.pending : new Set());  // instant, no server call
-}));
-$("view").addEventListener("change", renderWeights);
-
 restore();
-renderWeights();
 renderWeekdays();
 manageCall("GET", "/api/groups");
 loadKey();
