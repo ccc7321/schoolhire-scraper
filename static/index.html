@@ -179,8 +179,9 @@ button.small { padding: 5px 10px; font-size: 13px; }
       <label>From <input type="time" id="after" step="1800"></label>
       <label>Until <input type="time" id="before" step="1800"></label>
       <label>Sort by
-        <select id="sort"><option value="date">Date</option><option value="price">Price</option>
-          <option value="drive">Drive time</option><option value="best">Best match</option></select></label>
+        <select id="sort"><option value="best" selected>Best match</option><option value="date">Date</option>
+          <option value="price">Price (cheapest)</option><option value="drive">Distance (drive time)</option>
+          <option value="length">Longest slot</option><option value="free">Most of hall free</option></select></label>
       <label>Show
         <select id="view"><option value="list">List</option><option value="grid">Week grid</option></select></label>
     </div>
@@ -275,7 +276,7 @@ function restore() {
     const s = JSON.parse(localStorage.getItem("courtFinder") || "null");
     if (!s) return;
     FIELDS.forEach(f => { if (s[f] !== undefined) $(f).value = s[f]; });
-    if (!$("sort").value) $("sort").value = "date";
+    if (!$("sort").value) $("sort").value = "best";
     if (!$("view").value) $("view").value = "list";
     state.weekdays = s.weekdays || [];
     state.hide = s.hide || [];
@@ -382,7 +383,25 @@ function scoreWindows(windows) {
       .filter(([k]) => w[k] > 0 && parts[k] >= 0.75 && (k !== "free" || parts.free === 1))
       .sort((a, b) => w[b[0]] * parts[b[0]] - w[a[0]] * parts[a[0]]).slice(0, 3).map(([, t]) => t);
     return { ...x, score, why };
-  }).sort((a, b) => b.score - a.score || a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
+  });
+}
+
+// Every slot gets its match score; the list is then ordered by the chosen sort,
+// with ties going to the better match. Date keeps the server's order (by day and time).
+const byTime = (a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start);
+const shortestDrive = w => w.drive.length ? Math.min(...w.drive.map(d => d.min)) : null;
+const unknownLast = (x, y) => (x == null) - (y == null) || (x ?? 0) - (y ?? 0);
+const SORTERS = {
+  price: (a, b) => unknownLast(a.price, b.price) || b.score - a.score || byTime(a, b),
+  drive: (a, b) => unknownLast(shortestDrive(a), shortestDrive(b)) || b.score - a.score || byTime(a, b),
+  best: (a, b) => b.score - a.score || byTime(a, b),
+  length: (a, b) => b.minutes - a.minutes || b.score - a.score || byTime(a, b),
+  free: (a, b) => b.min_free_pct - a.min_free_pct || b.score - a.score || byTime(a, b),
+};
+function rankWindows(windows) {
+  const scored = scoreWindows(windows);
+  const sorter = SORTERS[$("sort").value];
+  return sorter ? scored.sort(sorter) : scored;
 }
 
 // Week grid: for each day, a bar per court from the day's first to last time,
@@ -440,7 +459,7 @@ function renderGrid(data, pending) {
 function renderResults(data, pending = new Set()) {
   const out = $("results");
   if ($("view").value === "grid") return renderGrid(data, pending);
-  if ($("sort").value === "best" && data.windows.length) data = { ...data, windows: scoreWindows(data.windows) };
+  if (data.windows.length) data = { ...data, windows: rankWindows(data.windows) };
   if (!data.windows.length) {
     out.innerHTML = pending.size
       ? '<div class="empty">Checking courts… slots appear here as each court is checked.</div>'
@@ -779,7 +798,7 @@ $("mCourts").addEventListener("click", async e => {
 });
 
 function renderWeights() {
-  $("weights").hidden = $("sort").value !== "best";
+  $("weights").hidden = $("view").value === "grid";  // the scores show on every list sort
   document.querySelectorAll("[data-w]").forEach(i => i.value = state.weights[i.dataset.w]);
 }
 document.querySelectorAll("[data-w]").forEach(i => i.addEventListener("input", () => {
@@ -787,7 +806,7 @@ document.querySelectorAll("[data-w]").forEach(i => i.addEventListener("input", (
   save();
   if (lastData) renderResults(lastData, loading ? loading.pending : new Set());  // instant, no server call
 }));
-$("sort").addEventListener("change", renderWeights);
+$("view").addEventListener("change", renderWeights);
 
 restore();
 renderWeights();
