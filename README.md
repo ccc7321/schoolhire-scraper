@@ -71,6 +71,10 @@ On the page you can:
 - limit to certain times (e.g. from 18:00) and days (e.g. Sat, Sun)
 - switch individual courts on or off, and sort by date, price or drive time
 - press **Book ↗** to open that court's calendar on schoolhire.co.uk for that day
+- switch **Show** to **Week grid** to see each day as a timeline: a bar per
+  court, green where the whole hall is free, amber where at least your chosen
+  share is free, striped where it's booked, and blank where it isn't open. Tap a
+  coloured block to book it
 
 While courts are being checked, each court's button shows a small spinner and
 a bar shows how many are done. Slots appear as soon as each court is checked, so

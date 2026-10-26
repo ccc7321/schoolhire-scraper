@@ -100,6 +100,23 @@ def get_slots(courts: list[dict], start: dt.date, days: int, refresh: bool) -> N
             list(pool.map(lambda c: fetch_court(c, start, days, refresh), courts))
 
 
+def grid_slots(court: dict, slots: list, after: str | None, before: str | None,
+               weekdays: set[int] | None) -> list[dict]:
+    """A court's slots (free, part-booked and booked) on the chosen days, cut to the
+    chosen times, for drawing the week grid."""
+    lo = sh.to_minutes(after) if after else 0
+    hi = sh.to_minutes(before) if before else 24 * 60
+    out = []
+    for s in slots:
+        if weekdays is not None and dt.date.fromisoformat(s.date).weekday() not in weekdays:
+            continue
+        start, end = max(sh.to_minutes(s.start), lo), min(sh.to_minutes(s.end), hi)
+        if end > start:
+            out.append({"url": court["url"], "date": s.date, "start": sh.from_minutes(start),
+                        "end": sh.from_minutes(end), "free": s.free_pct})
+    return out
+
+
 def groups_summary(data: dict) -> list[dict]:
     return [{"id": g["id"], "name": g["name"], "from": g.get("from", ""),
              "depart": g.get("depart", ""), "courts": g["courts"]} for g in data["groups"]]
@@ -142,6 +159,7 @@ def api_slots():
         get_slots(courts, start, days, refresh=q.get("refresh") == "1")
 
     windows, statuses = [], []
+    grid = [] if q.get("view") == "grid" else None  # every slot, for the week grid
     for court in courts:
         with _lock:
             entry = _cache.get(court["url"])
@@ -159,6 +177,8 @@ def api_slots():
         if court["url"] not in hidden:
             windows += sh.court_windows(court, entry["slots"], min_free, min_minutes,
                                         after, before, weekdays)
+            if grid is not None:
+                grid += grid_slots(court, entry["slots"], after, before, weekdays)
     windows.sort(key=sh.SORT_KEYS[sort])
     return jsonify({
         "group": group,
@@ -168,6 +188,7 @@ def api_slots():
         "demo": bool(config["fixture"]),
         "courts": statuses,
         "windows": [asdict(w) for w in windows],
+        **({"grid": grid} if grid is not None else {}),
     })
 
 

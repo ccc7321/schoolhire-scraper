@@ -184,6 +184,16 @@ class ApiTest(unittest.TestCase):
         found = self.client.get("/api/search?place=NW9").get_json()["results"]
         self.assertEqual(next(r for r in found if r["url"] == rick)["in_groups"], ["East London"])
 
+    def test_grid_has_every_slot_cut_to_the_filters(self):
+        self.assertNotIn("grid", self.client.get("/api/slots").get_json())
+        data = self.client.get("/api/slots?view=grid&weekdays=1&after=17:30").get_json()
+        self.assertEqual([(g["date"], g["start"], g["end"], g["free"]) for g in data["grid"]], [
+            ("2026-09-29", "17:30", "18:00", 100), ("2026-09-29", "18:00", "19:00", 50),
+            ("2026-09-29", "19:00", "20:30", 25), ("2026-09-29", "20:30", "22:00", 0)])
+        self.assertEqual({g["url"] for g in data["grid"]}, {DAGENHAM})
+        hidden = self.client.get("/api/slots?view=grid&hide=" + DAGENHAM).get_json()
+        self.assertEqual(hidden["grid"], [])
+
     def test_bad_time(self):
         self.assertEqual(self.client.get("/api/slots?after=abc").status_code, 400)
 
