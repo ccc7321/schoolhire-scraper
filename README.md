@@ -10,13 +10,55 @@ schoolhire.co.uk link.
 
 ## Quick start
 
+You need Python 3. The start scripts below set everything else up the first
+time (in a `.venv` folder inside the project) and then open the app in your
+browser at http://127.0.0.1:5050. Leave the window that opens running while
+you use the app; close it, or press **Ctrl+C** in it, to stop.
+
+### Windows
+
+1. Install Python 3 from https://www.python.org/downloads/ if you don't have
+   it. In the installer, tick **Add python.exe to PATH**.
+2. Double-click **`start.bat`** in the project folder.
+
+Or in Command Prompt / PowerShell, from the project folder:
+
+```bat
+py -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python app.py
+```
+
+Next time, just `.venv\Scripts\python app.py` (or double-click `start.bat`).
+
+### Mac
+
+1. Check you have Python 3: open **Terminal** and run `python3 --version`. If
+   it says "command not found", install it from
+   https://www.python.org/downloads/ or with Homebrew: `brew install python`.
+   (There's no separate `pip` to install; it comes with Python.)
+2. Double-click **`start.command`** in the project folder. The first time,
+   macOS may say it's from an unidentified developer: right-click it, choose
+   **Open**, then **Open** again. If it says you don't have permission, run
+   `chmod +x start.command` in Terminal from the project folder once.
+
+Or in Terminal, from the project folder:
+
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 python app.py
 ```
 
-Your browser opens at http://127.0.0.1:5000. On Windows you can just
-double-click `start.bat` instead.
+Next time, just `source .venv/bin/activate` then `python app.py` (or
+double-click `start.command`).
+
+Use the private `.venv` environment rather than a plain `pip install`: Homebrew's
+Python refuses system-wide installs ("externally-managed-environment").
+
+The app uses port 5050, because macOS uses port 5000 for AirPlay Receiver. If
+5050 is taken too, start it with another, e.g. `python app.py --port 5060`.
 
 It starts with an example group, **East London**, with seven courts in it.
 Change it, delete it or make your own under **Manage groups & courts**.
@@ -39,7 +81,7 @@ Other ways to start it:
 ```bash
 python app.py --fixture get.json   # demo with the saved sample, no internet needed
 python app.py --host 0.0.0.0       # also reachable from your phone on the same Wi-Fi
-python app.py --port 8080 --no-browser
+python app.py --port 8080 --no-browser   # any free port
 ```
 
 ## Groups and courts

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Local web page showing basketball court slots that are at least N% free.
 
-    python app.py                    # opens http://127.0.0.1:5000
+    python app.py                    # opens http://127.0.0.1:5050
     python app.py --fixture get.json # demo with the saved sample, no network
 
 Courts are kept in groups that you make on the page (saved in courts.json).
@@ -222,7 +222,8 @@ def index():
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    p.add_argument("--port", type=int, default=5000)
+    p.add_argument("--port", type=int, default=5050,
+                   help="default 5050 (macOS uses 5000 for AirPlay Receiver)")
     p.add_argument("--host", default="127.0.0.1",
                    help="use 0.0.0.0 to open it from your phone on the same Wi-Fi")
     p.add_argument("--courts", type=Path,

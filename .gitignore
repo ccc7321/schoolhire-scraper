@@ -5,3 +5,4 @@ results.json
 courts.json
 courts.tmp
 settings.json
+.venv/
